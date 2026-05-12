@@ -1,0 +1,19 @@
+{
+  "name": "teacher-server",
+  "version": "1.0.0",
+  "description": "Teacher Management API Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build:frontend": "cd ../vue-app && npm run build",
+    "deploy": "npm run build:frontend && NODE_ENV=production node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "bcryptjs": "^2.4.3"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "teacher-project",
+  "version": "1.0.0",
+  "description": "Teacher Management System with Vue.js and Node.js",
+  "scripts": {
+    "dev:client": "vue-cli-service serve --mode development",
+    "build:client": "vue-cli-service build --mode production",
+    "start": "node server/index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

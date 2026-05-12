@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <title>教师管理系统 - Teacher Management System</title>
+    <style>
+      :root {
+        --bg-primary: #f5f7fa;
+        --bg-card: #ffffff;
+        --bg-input: #ffffff;
+        --bg-hover: #f3f4f6;
+        --bg-active: #e5e7eb;
+        --bg-primary-light: #eef2ff;
+        --text-primary: #1a1a2e;
+        --text-secondary: #4a5568;
+        --text-muted: #8898aa;
+        --text-light: #bbb;
+        --border-color: #e1e1e1;
+        --border-light: #f0f0f0;
+        --color-primary: #667eea;
+        --color-primary-gradient: linear-gradient(135deg, #667eea, #764ba2);
+        --color-success: #10b981;
+        --color-warning: #f59e0b;
+        --color-error: #ef4444;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+        --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+      }
+      [data-theme="dark"] {
+        --bg-primary: #0f0f23;
+        --bg-card: #1a1a3e;
+        --bg-input: #1a1a3e;
+        --bg-hover: #252550;
+        --bg-active: #2e2e5e;
+        --bg-primary-light: #1e2040;
+        --text-primary: #e8e8f0;
+        --text-secondary: #a8a8c8;
+        --text-muted: #7878a0;
+        --text-light: #585888;
+        --border-color: #2e2e5e;
+        --border-light: #252550;
+        --color-primary: #818cf8;
+        --color-primary-gradient: linear-gradient(135deg, #818cf8, #a78bfa);
+        --color-success: #34d399;
+        --color-warning: #fbbf24;
+        --color-error: #f87171;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+        --shadow-lg: 0 8px 30px rgba(0,0,0,0.5);
+      }
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background 0.3s, color 0.3s;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <!-- built files will be auto injected -->
+  </body>
+</html>
