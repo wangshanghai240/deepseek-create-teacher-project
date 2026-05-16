@@ -65,30 +65,46 @@ export default {
     const CACHE_KEY = 'news_cache'
 
     const fetchNews = async (forceRefresh = false) => {
-      // 尝试从缓存恢复
+      // 尝试从缓存恢复（缓存有效期5分钟）
       if (!forceRefresh) {
         const cached = sessionStorage.getItem(CACHE_KEY)
         if (cached) {
           try {
             const data = JSON.parse(cached)
-            newsList.value = data.list
-            page.value = data.page
-            hasMore.value = data.hasMore
-            loading.value = false
-            return
+            // 检查缓存是否过期（5分钟）
+            const isExpired = !data.timestamp || (Date.now() - data.timestamp) > 5 * 60 * 1000
+            
+            if (!isExpired) {
+              // 缓存未过期，直接使用
+              newsList.value = data.list
+              page.value = data.page
+              hasMore.value = data.hasMore
+              loading.value = false
+              return
+            } else {
+              // 缓存已过期，先显示缓存数据，后台刷新
+              newsList.value = data.list
+              page.value = data.page
+              hasMore.value = data.hasMore
+              loading.value = false
+              // 后台静默刷新
+              refreshFromApi()
+              return
+            }
           } catch (e) { /* 缓存解析失败，重新加载 */ }
         }
       }
 
-      loading.value = true
-      error.value = ''
-      page.value = 1
+      await refreshFromApi()
+    }
+
+    const refreshFromApi = async () => {
       try {
         const res = await axios.get(`/api/news?limit=${PAGE_SIZE}&page=1`, { timeout: 10000 })
         if (res.data.success) {
           newsList.value = res.data.data.list
           hasMore.value = res.data.data.pagination.page < res.data.data.pagination.totalPages
-          // 保存到缓存
+          page.value = 1
           saveCache(res.data.data.list, 1, hasMore.value)
         } else {
           error.value = '获取新闻失败'
@@ -96,8 +112,6 @@ export default {
       } catch (err) {
         console.error('获取新闻失败:', err)
         error.value = '获取新闻失败，请检查网络连接'
-      } finally {
-        loading.value = false
       }
     }
 
@@ -106,7 +120,8 @@ export default {
         sessionStorage.setItem(CACHE_KEY, JSON.stringify({
           list,
           page: currentPage,
-          hasMore: more
+          hasMore: more,
+          timestamp: Date.now()
         }))
       } catch (e) { /* 存储失败忽略 */ }
     }
