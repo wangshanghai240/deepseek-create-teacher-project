@@ -87,17 +87,47 @@ export default {
     const loading = ref(true)
     const error = ref('')
     const fontSize = ref(16)
+    const videoUrl = ref('')
+    const videoLoading = ref(false)
+    const videoError = ref('')
 
     const newsId = window.location.pathname.split('/').pop()
+
+    const loadVideo = async () => {
+      if (!news.value || !news.value.id) return
+      videoLoading.value = true
+      videoError.value = ''
+      try {
+        const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
+        if (res.data.success) {
+          const rawUrl = res.data.data.videoUrl
+          if (rawUrl) {
+            videoUrl.value = '/api/video/proxy?url=' + encodeURIComponent(rawUrl)
+          } else {
+            videoError.value = '无法获取视频播放地址'
+          }
+        } else {
+          videoError.value = res.data.message || '获取视频失败'
+        }
+      } catch (err) {
+        console.error('加载视频失败:', err)
+        videoError.value = '视频加载失败，请重试或点击「在央视网观看」'
+      } finally {
+        videoLoading.value = false
+      }
+    }
 
     const fetchNewsDetail = async () => {
       loading.value = true
       error.value = ''
       try {
-        // 使用 /full 接口，后端会实时抓取原文完整内容
         const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
         if (res.data.success) {
           news.value = res.data.data
+          // 如果是视频新闻，自动加载视频地址
+          if (res.data.data.type === 'video') {
+            loadVideo()
+          }
         } else {
           error.value = '获取新闻详情失败'
         }
@@ -113,11 +143,6 @@ export default {
       window.location.href = '/home/index'
     }
 
-    /**
-     * 打开视频原始页面（在央视网观看）
-     * 由于版权保护，视频无法在 iframe 中嵌入播放，
-     * 因此直接跳转到 CCTV 原始页面观看
-     */
     const openVideoPage = () => {
       if (news.value && news.value.source_url) {
         window.open(news.value.source_url, '_blank')
