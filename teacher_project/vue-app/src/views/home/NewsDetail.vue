@@ -35,14 +35,12 @@
       </div>
 
       <!-- 视频新闻：嵌入视频播放 -->
+      <!-- 视频新闻：展示视频播放界面 -->
       <div v-if="news.type === 'video' && news.source_url" class="video-wrapper">
-        <iframe
-          :src="getVideoEmbedUrl(news.source_url)"
-          class="video-iframe"
-          frameborder="0"
-          allowfullscreen
-          allow="autoplay; encrypted-media"
-        ></iframe>
+        <div class="video-placeholder" @click="openVideoPage">
+          <div class="video-play-icon">▶</div>
+          <div class="video-play-text">点击播放视频</div>
+        </div>
       </div>
 
       <!-- 文章新闻：展示文字内容 -->
@@ -50,7 +48,7 @@
 
       <div class="news-footer">
         <a v-if="news.source_url" :href="news.source_url" target="_blank" class="source-link">
-          {{ news.type === 'video' ? '观看原视频 ↗' : '查看原文 ↗' }}
+          {{ news.type === 'video' ? '在央视网观看 ↗' : '查看原文 ↗' }}
         </a>
       </div>
     </template>
@@ -94,6 +92,17 @@ export default {
       window.location.href = '/home/index'
     }
 
+    /**
+     * 打开视频原始页面（在央视网观看）
+     * 由于版权保护，视频无法在 iframe 中嵌入播放，
+     * 因此直接跳转到 CCTV 原始页面观看
+     */
+    const openVideoPage = () => {
+      if (news.value && news.value.source_url) {
+        window.open(news.value.source_url, '_blank')
+      }
+    }
+
     const formatDate = (d) => {
       if (!d) return ''
       const date = new Date(d)
@@ -128,7 +137,7 @@ export default {
 
     onMounted(fetchNewsDetail)
 
-    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, getVideoEmbedUrl }
+    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, openVideoPage }
   }
 }
 </script>
@@ -280,20 +289,52 @@ export default {
 .video-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%; /* 16:9 宽高比 */
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 20px;
   background: #000;
+  cursor: pointer;
 }
 
-.video-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
+.video-placeholder {
   width: 100%;
-  height: 100%;
-  border: none;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  transition: all 0.3s;
+}
+
+.video-placeholder:hover {
+  background: linear-gradient(135deg, #16213e 0%, #0f3460 50%, #1a1a2e 100%);
+}
+
+.video-play-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: white;
+  margin-bottom: 12px;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.3s;
+}
+
+.video-placeholder:hover .video-play-icon {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.1);
+}
+
+.video-play-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
 }
 
 .news-footer {
