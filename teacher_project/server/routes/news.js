@@ -12,15 +12,38 @@ const dbPoolConfig = {
 };
 
 /**
- * 判断新闻是否为视频类型
+ * 从 URL 判断新闻是否为视频类型
  * CCTV 视频新闻的特征：
  * - 域名 tv.cctv.com
- * - URL 路径中包含 /VIDE（视频内容ID前缀）
+ * - URL 路径中包含 VIDE（视频内容ID前缀）
  * - 域名 video.cctv.com
  */
 function isVideoUrl(url) {
   if (!url) return false;
-  return url.includes('tv.cctv.com') || url.includes('/VIDE') || url.includes('video.cctv.com');
+  // CCTV 视频专用域名
+  if (url.includes('tv.cctv.com')) return true;
+  if (url.includes('video.cctv.com')) return true;
+  // 内容ID以 VIDE 开头（视频ID标识）
+  const pathname = url.replace(/https?:\/\//, '');
+  if (pathname.includes('/VIDE')) return true;
+  return false;
+}
+
+/**
+ * 从页面 HTML 内容判断是否为视频页面
+ * 在 /full 接口中抓取页面后调用，比 URL 判断更准确
+ */
+function isVideoPage(html) {
+  if (!html) return false;
+  // contentid 以 VIDE 开头是视频
+  const idMatch = html.match(/contentid["']?\s*content=["']([^"']+)["']/);
+  if (idMatch && idMatch[1].startsWith('VIDE')) return true;
+  // 标题带 [栏目标题] 前缀通常是视频（如 [新闻直播间]xxx）
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+  if (titleMatch && /^\[.+\]/.test(titleMatch[1])) return true;
+  // 页面没有 contentdate 但有视频播放器相关元素
+  if (!html.includes('contentdate') && (html.includes('class="player"') || html.includes('video-player'))) return true;
+  return false;
 }
 
 /**
@@ -125,6 +148,7 @@ router.get('/news/:id/full', async (req, res) => {
     }
 
     const newsItem = rows[0];
+    newsItem.type = isVideoUrl(newsItem.source_url) ? 'video' : 'article';
     let fullContent = newsItem.content || newsItem.summary || '';
 
     // 如果有 source_url，实时抓取完整内容
@@ -132,6 +156,11 @@ router.get('/news/:id/full', async (req, res) => {
       try {
         const htmlRes = await axios.get(newsItem.source_url, { timeout: 15000 });
         const html = htmlRes.data;
+
+        // 用页面特征修正 type（比 URL 判断更准确）
+        if (isVideoPage(html)) {
+          newsItem.type = 'video';
+        }
 
         // 方式1: 从 JavaScript 变量 contentdate 中提取（CCTV 常见方式）
         const contentdateMatch = html.match(/var\s+contentdate\s*=\s*'([\s\S]*?)';/);
@@ -220,7 +249,6 @@ router.get('/news/:id/full', async (req, res) => {
     }
 
     newsItem.fullContent = fullContent;
-    newsItem.type = isVideoUrl(newsItem.source_url) ? 'video' : 'article';
 
     res.json({ success: true, data: newsItem });
   } catch (error) {
