@@ -198,6 +198,8 @@ router.get('/news/:id/full', async (req, res) => {
           }
         }
 
+        }
+
         // 如果上面的正则都匹配不到，尝试提取所有正文段落
         if (fullContent === (newsItem.content || newsItem.summary || '')) {
           const pMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
