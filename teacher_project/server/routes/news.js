@@ -13,11 +13,14 @@ const dbPoolConfig = {
 
 /**
  * 判断新闻是否为视频类型
- * CCTV 视频新闻的 URL 包含 tv.cctv.com 域名或 VIDE 标识
+ * CCTV 视频新闻的特征：
+ * - 域名 tv.cctv.com
+ * - URL 路径中包含 /VIDE（视频内容ID前缀）
+ * - 域名 video.cctv.com
  */
 function isVideoUrl(url) {
   if (!url) return false;
-  return url.includes('tv.cctv.com') || url.includes('/VIDE');
+  return url.includes('tv.cctv.com') || url.includes('/VIDE') || url.includes('video.cctv.com');
 }
 
 /**
