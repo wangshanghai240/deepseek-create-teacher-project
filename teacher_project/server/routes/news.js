@@ -383,17 +383,27 @@ router.get('/video/proxy', async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Range');
 
     // 如果是 m3u8 文件，需要代理重写内部的 URL
-    if (contentType.includes('m3u8') || decodedUrl.endsWith('.m3u8')) {
+    // m3u8 的 content-type 可能是 application/x-mpegURL 或 application/vnd.apple.mpegURL
+    const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || 
+                   decodedUrl.replace(/\?.*$/, '').endsWith('.m3u8');
+    if (isM3u8) {
       let data = '';
       response.data.on('data', (chunk) => { data += chunk.toString(); });
       response.data.on('end', () => {
-        // 重写 m3u8 中的 ts 地址，使其也通过代理
+        // 从原始 URL 中提取基础路径
+        const urlObj = new URL(decodedUrl.replace(/\?.*$/, ''));
         const baseUrl = decodedUrl.substring(0, decodedUrl.lastIndexOf('/') + 1);
+        const protocolHost = urlObj.protocol + '//' + urlObj.host;
+        
+        // 重写 m3u8 中的 ts/m3u8 地址，使其也通过代理
         const rewritten = data.replace(/([^\n]+\.(ts|m3u8)[^\n]*)/gi, (match) => {
-          if (match.startsWith('http')) {
-            return `/api/video/proxy?url=${encodeURIComponent(match)}`;
+          const line = match.trim();
+          if (line.startsWith('http')) {
+            return `/api/video/proxy?url=${encodeURIComponent(line)}`;
+          } else if (line.startsWith('/')) {
+            return `/api/video/proxy?url=${encodeURIComponent(protocolHost + line)}`;
           } else {
-            return `/api/video/proxy?url=${encodeURIComponent(baseUrl + match)}`;
+            return `/api/video/proxy?url=${encodeURIComponent(baseUrl + line)}`;
           }
         });
         res.send(rewritten);
