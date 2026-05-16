@@ -140,19 +140,44 @@ async function fetchNewsDetail(url) {
 
     // 提取文章内容
     let content = '';
-    const contentPatterns = [
-      /<div class="content_body"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|pagefun|share)"/,
-      /<div class="cnt_bd"[^>]*>([\s\S]*?)<\/div>\s*<!--\s*(?:责任编辑|编辑)/,
-      /<article[^>]*>([\s\S]*?)<\/article>/,
-      /<div class="article-body"[^>]*>([\s\S]*?)<\/div>/,
-      /<div class="content"[^>]*>([\s\S]*?)<\/div>/,
-    ];
 
-    for (const pattern of contentPatterns) {
-      const m = html.match(pattern);
-      if (m) {
-        content = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-        if (content.length > 50) break;
+    // 方式1: 从 JavaScript 变量 contentdate 中提取（CCTV 常见方式）
+    const contentdateMatch = html.match(/var\s+contentdate\s*=\s*'([\s\S]*?)';/);
+    if (contentdateMatch) {
+      content = contentdateMatch[1]
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&ldquo;/g, '"')
+        .replace(/&rdquo;/g, '"')
+        .replace(/&middot;/g, '·')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    // 方式2: 传统 DOM 选择器提取
+    if (!content || content.length < 50) {
+      const contentPatterns = [
+        /<div class="content_body"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|pagefun|share)"/,
+        /<div class="cnt_bd"[^>]*>([\s\S]*?)<\/div>\s*<!--\s*(?:责任编辑|编辑)/,
+        /<article[^>]*>([\s\S]*?)<\/article>/,
+        /<div class="article-body"[^>]*>([\s\S]*?)<\/div>/,
+        /<div class="content"[^>]*>([\s\S]*?)<\/div>/,
+      ];
+
+      for (const pattern of contentPatterns) {
+        const m = html.match(pattern);
+        if (m) {
+          content = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+          if (content.length > 50) break;
+        }
       }
     }
 

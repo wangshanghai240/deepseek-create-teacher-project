@@ -113,8 +113,33 @@ router.get('/news/:id/full', async (req, res) => {
         const htmlRes = await axios.get(newsItem.source_url, { timeout: 15000 });
         const html = htmlRes.data;
 
-        // 尝试多种选择器提取正文（按优先级排列）
-        const patterns = [
+        // 方式1: 从 JavaScript 变量 contentdate 中提取（CCTV 常见方式）
+        const contentdateMatch = html.match(/var\s+contentdate\s*=\s*'([\s\S]*?)';/);
+        if (contentdateMatch) {
+          let text = contentdateMatch[1]
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<\/div>/gi, '\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&ldquo;/g, '"')
+            .replace(/&rdquo;/g, '"')
+            .replace(/&middot;/g, '·')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+          if (text.length > 100) {
+            fullContent = text;
+          }
+        }
+
+        // 如果 contentdate 方式没取到，尝试传统 HTML DOM 选择器
+        if (fullContent === (newsItem.content || newsItem.summary || '')) {
+          const patterns = [
           /<div class="content_body"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|pagefun|share)"/,
           /<div class="cnt_bd"[^>]*>([\s\S]*?)<\/div>\s*<!--\s*(?:责任编辑|编辑)/,
           /<article[^>]*>([\s\S]*?)<\/article>/,
