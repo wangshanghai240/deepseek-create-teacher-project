@@ -117,17 +117,12 @@ export default {
 
     /**
      * 将 CCTV 视频 URL 转为可嵌入的 iframe 地址
-     * tv.cctv.com 视频可通过特定格式嵌入
+     * CCTV 视频页面使用 JavaScript 动态渲染播放器，没有公共的嵌入接口
+     * 因此直接使用原页面 URL 作为 iframe 源，让页面自带的播放器运行
      */
     const getVideoEmbedUrl = (url) => {
       if (!url) return ''
-      // 从 URL 中提取视频 ID
-      const match = url.match(/VIDE(\w+)/)
-      if (match) {
-        const videoId = match[0]
-        return `https://tv.cctv.com/embed/player.php?vid=${videoId}&autoplay=false`
-      }
-      // 如果无法提取，直接返回原链接（用户点击查看原文打开）
+      // 直接使用原页面 URL 作为 iframe 源，页面自带的 vodplayer 会渲染播放器
       return url
     }
 
