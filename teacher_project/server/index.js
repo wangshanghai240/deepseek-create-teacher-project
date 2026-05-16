@@ -25,10 +25,6 @@ app.use(express.urlencoded({ extended: true })); // 解析 URL-encoded 请求体
 // ========== 生产环境：托管前端静态文件 ==========
 const isProduction = process.env.NODE_ENV === 'production'
 const frontendDist = path.join(__dirname, '..', 'vue-app', 'dist')
-if (isProduction) {
-  app.use(express.static(frontendDist))
-  console.log('✓ 生产模式：前端静态文件已加载')
-}
 
 // 静态文件服务 - 允许访问上传的图片
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -50,6 +46,24 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ========== 前端静态文件托管（生产/开发通用） ==========
+app.use(express.static(frontendDist))
+
+// ========== SPA 历史路由回退 ==========
+// 所有非 API、非静态文件的 GET 请求返回 index.html
+const fs = require('fs')
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next()
+  const ext = path.extname(req.path)
+  if (ext) return next()
+  const indexPath = path.join(frontendDist, 'index.html')
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath)
+  } else {
+    next()
+  }
+})
 
 // ========== 生产环境：处理前端路由（SPA 回退） ==========
 if (isProduction) {
