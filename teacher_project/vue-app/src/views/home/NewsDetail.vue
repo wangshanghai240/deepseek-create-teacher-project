@@ -207,17 +207,20 @@ export default {
 
       try {
         if (isVideoId) {
-          // 新闻联播视频：直接构造播放信息
+          // 从 VIDE ID 末尾提取 6 位日期 (YYMMDD) 构造页面 URL
+          const dateMatch = newsId.match(/(\d{6})$/)
+          const dateStr = dateMatch ? dateMatch[1] : '260516'
+          const sourceUrl = 'https://tv.cctv.com/20' + dateStr.substring(0, 2) + '/' + dateStr.substring(2, 4) + '/' + dateStr.substring(4, 6) + '/' + newsId + '.shtml'
+
           news.value = {
             id: newsId,
             title: '新闻联播',
             type: 'video',
-            source_url: 'https://tv.cctv.com/' + newsId.substring(0, 4) + '/' + newsId.substring(4, 6) + '/' + newsId.substring(6, 8) + '/' + newsId + '.shtml',
+            source_url: sourceUrl,
             reporter: '央视新闻',
             source: 'news.cctv.com',
             created_at: new Date().toISOString()
           }
-          // 直接加载视频
           setTimeout(() => loadVideo(), 200)
         } else {
           const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
