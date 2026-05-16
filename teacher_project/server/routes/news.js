@@ -389,6 +389,40 @@ router.get('/news/:id/video', async (req, res) => {
     );
 
     if (rows.length === 0) {
+      // 数据库找不到时，尝试通过 url 查询参数获取视频
+      const fallbackUrl = req.query.url
+      if (fallbackUrl) {
+        try {
+          const pageRes = await axios.get(fallbackUrl, {
+            timeout: 15000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://tv.cctv.com/' }
+          });
+          const html = pageRes.data;
+          let videoId = '';
+          const guidMatch = html.match(/guid\s*=\s*['"]\s*([^'"]+)['"]/);
+          if (guidMatch) {
+            videoId = guidMatch[1].trim();
+          } else {
+            const vcMatch = html.match(/htmlVideoCode--\]([a-f0-9]+),/);
+            if (vcMatch) videoId = vcMatch[1];
+          }
+          if (videoId) {
+            const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${videoId}`;
+            const apiRes = await axios.get(apiUrl, {
+              timeout: 15000,
+              headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://tv.cctv.com/' }
+            });
+            if (apiRes.data.hls_url) {
+              return res.json({
+                success: true,
+                data: { id, title: apiRes.data.title || '新闻', videoId, videoUrl: apiRes.data.hls_url, videoType: 'm3u8' }
+              });
+            }
+          }
+        } catch (e) {
+          console.error('后备视频获取失败:', e.message);
+        }
+      }
       return res.json({ success: false, message: '新闻不存在' });
     }
 

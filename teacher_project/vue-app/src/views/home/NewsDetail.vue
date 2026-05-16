@@ -187,7 +187,10 @@ export default {
       videoStatus.value = 'loading'
       videoError.value = ''
       try {
-        const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
+        // 如果 news.id 不是数字（VIDE ID 或后备 ID），需要传 source_url 作为后备
+        const sourceUrl = news.value.source_url || ''
+        const urlSuffix = sourceUrl ? '?url=' + encodeURIComponent(sourceUrl) : ''
+        const res = await axios.get('/api/news/' + news.value.id + '/video' + urlSuffix, { timeout: 20000 })
         if (res.data.success && res.data.data.videoUrl) {
           const rawUrl = res.data.data.videoUrl
           // 移动端：直接使用原始hls_url（原生播放器绕过防盗链）
@@ -235,9 +238,13 @@ export default {
           if (res.data.success) {
             news.value = res.data.data
           } else if (fallbackUrl) {
-            // 新闻已被同步删除，使用后备信息构造播放对象
+            // 新闻已被同步删除，使用后备信息
+            // 提取 VIDE ID 用于 /video 接口
+            const vidMatch = fallbackUrl.match(/VIDE\w+/)
+            const fallbackId = vidMatch ? vidMatch[0] : newsId
+
             news.value = {
-              id: newsId,
+              id: fallbackId,
               title: fallbackTitle || '新闻',
               type: fallbackType || 'video',
               source_url: fallbackUrl,
@@ -246,7 +253,6 @@ export default {
               created_at: new Date().toISOString(),
               fullContent: ''
             }
-            // 如果是视频，触发加载
             setTimeout(() => loadVideo(), 200)
           } else {
             error.value = '获取新闻详情失败'
