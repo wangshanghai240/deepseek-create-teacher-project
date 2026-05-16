@@ -126,7 +126,7 @@ export default {
         return
       }
 
-      // 使用 hls.js
+      // 使用 hls.js（通过后端代理加载，代理已处理防盗链）
       try {
         if (!Hls.isSupported()) {
           videoError.value = '您的浏览器不支持播放此视频'
@@ -134,15 +134,7 @@ export default {
           return
         }
 
-        // 使用自定义 loader 设置 referer，绕过 CCTV 的防盗链
-        const config = {
-          xhrSetup: (xhr) => {
-            xhr.setRequestHeader('Referer', 'https://tv.cctv.com/')
-            xhr.setRequestHeader('Origin', 'https://tv.cctv.com')
-          }
-        }
-
-        hlsInstance = new Hls(config)
+        hlsInstance = new Hls()
         hlsInstance.loadSource(url)
         hlsInstance.attachMedia(video)
 
@@ -154,22 +146,22 @@ export default {
         })
 
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-          console.error('HLS错误:', data.type, data.details)
+          console.error('HLS错误:', data.type, data.details, data.reason)
           if (data.fatal) {
             hlsInstance.destroy()
             hlsInstance = null
-            videoError.value = '视频加载失败(' + (data.details || '未知错误') + ')'
+            videoError.value = '视频加载失败'
             videoStatus.value = 'error'
           }
         })
 
-        // 15秒超时检测
+        // 20秒超时检测
         setTimeout(() => {
           if (!parsed && videoStatus.value === 'loading') {
             videoError.value = '视频加载超时'
             videoStatus.value = 'error'
           }
-        }, 15000)
+        }, 20000)
       } catch (e) {
         console.error('hls.js错误:', e)
         videoError.value = '视频初始化失败'
@@ -178,7 +170,7 @@ export default {
     }
 
     /**
-     * 加载并播放视频
+     * 加载并播放视频（通过后端代理）
      */
     const loadVideo = async () => {
       if (!news.value || !news.value.id) return
@@ -187,11 +179,10 @@ export default {
       try {
         const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
         if (res.data.success && res.data.data.videoUrl) {
-          // 直接使用原始 hls_url，hls.js 通过 xhrSetup 设置 referer 绕过防盗链
-          const hlsUrl = res.data.data.videoUrl
-          // 等待 DOM 更新，确保 videoPlayer ref 已绑定
+          // 通过后端代理加载 m3u8 和 ts，代理已处理防盗链和路径重写
+          const proxyUrl = '/api/video/proxy?url=' + encodeURIComponent(res.data.data.videoUrl)
           await nextTick()
-          setTimeout(() => playVideo(hlsUrl), 100)
+          setTimeout(() => playVideo(proxyUrl), 100)
         } else {
           videoError.value = res.data.message || '无法获取视频播放地址'
           videoStatus.value = 'error'
