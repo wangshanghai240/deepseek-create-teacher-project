@@ -35,11 +35,32 @@
       </div>
 
       <!-- 视频新闻：嵌入视频播放 -->
-      <!-- 视频新闻：展示视频播放界面 -->
       <div v-if="news.type === 'video' && news.source_url" class="video-wrapper">
-        <div class="video-placeholder" @click="openVideoPage">
+        <!-- 视频加载中 -->
+        <div v-if="videoLoading" class="video-loading">
+          <div class="video-loading-spinner"></div>
+          <div class="video-loading-text">{{ $t('loading') }}</div>
+        </div>
+        <!-- 视频播放器 -->
+        <video
+          v-show="!videoLoading && videoUrl"
+          ref="videoPlayer"
+          class="video-player"
+          controls
+          autoplay
+          playsinline
+          webkit-playsinline
+          x5-playsinline
+          :src="videoUrl"
+        ></video>
+        <!-- 视频加载失败时显示播放按钮 -->
+        <div v-if="!videoLoading && !videoUrl && !videoError" class="video-placeholder" @click="loadVideo">
           <div class="video-play-icon">▶</div>
           <div class="video-play-text">点击播放视频</div>
+        </div>
+        <div v-if="videoError" class="video-error-state">
+          <p>{{ videoError }}</p>
+          <button class="retry-btn" @click="loadVideo">重试</button>
         </div>
       </div>
 
@@ -111,33 +132,20 @@ export default {
 
     const renderContent = (text) => {
       if (!text) return ''
-      // 替换换行为段落结构，支持连续换行分段
       return text
         .split(/\n{2,}/)
         .map(para => para.trim())
         .filter(para => para.length > 0)
         .map(para => {
-          // 段落内的单换行转为<br>
           const lines = para.split(/\n/).map(line => line.trim()).filter(line => line.length > 0)
           return '<p>' + lines.join('<br>') + '</p>'
         })
         .join('')
     }
 
-    /**
-     * 将 CCTV 视频 URL 转为可嵌入的 iframe 地址
-     * CCTV 视频页面使用 JavaScript 动态渲染播放器，没有公共的嵌入接口
-     * 因此直接使用原页面 URL 作为 iframe 源，让页面自带的播放器运行
-     */
-    const getVideoEmbedUrl = (url) => {
-      if (!url) return ''
-      // 直接使用原页面 URL 作为 iframe 源，页面自带的 vodplayer 会渲染播放器
-      return url
-    }
-
     onMounted(fetchNewsDetail)
 
-    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, openVideoPage }
+    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, loadVideo, videoUrl, videoLoading, videoError }
   }
 }
 </script>
@@ -293,9 +301,46 @@ export default {
   overflow: hidden;
   margin-bottom: 20px;
   background: #000;
-  cursor: pointer;
 }
 
+.video-player {
+  width: 100%;
+  display: block;
+  background: #000;
+  max-height: 500px;
+}
+
+/* 视频加载中 */
+.video-loading {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+  gap: 16px;
+}
+
+.video-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.video-loading-text {
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
+}
+
+/* 视频播放按钮 */
 .video-placeholder {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -304,6 +349,7 @@ export default {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  cursor: pointer;
   transition: all 0.3s;
 }
 
@@ -335,6 +381,27 @@ export default {
   font-size: 15px;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
+}
+
+/* 视频错误状态 */
+.video-error-state {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a2e;
+  gap: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.video-error-state p {
+  color: #e74c3c;
+  font-size: 14px;
+  text-align: center;
+  margin: 0;
 }
 
 .news-footer {

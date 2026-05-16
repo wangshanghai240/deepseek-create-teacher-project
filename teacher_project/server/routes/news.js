@@ -261,4 +261,153 @@ router.get('/news/:id/full', async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/news/:id/video
+ * @desc    获取新闻视频的真实播放地址（m3u8/mp4）
+ *          通过 CCTV 官方 API 获取，后端代理转发以绕过 referer 限制
+ */
+router.get('/news/:id/video', async (req, res) => {
+  let pool;
+  try {
+    const { id } = req.params;
+    pool = mysql.createPool(dbPoolConfig);
+
+    const [rows] = await pool.execute(
+      'SELECT id, title, source_url FROM news WHERE id = ?',
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: '新闻不存在' });
+    }
+
+    const newsItem = rows[0];
+
+    if (!newsItem.source_url) {
+      return res.status(400).json({ success: false, message: '该新闻没有视频源地址' });
+    }
+
+    // 第一步：从视频页面提取 guid
+    const pageRes = await axios.get(newsItem.source_url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://tv.cctv.com/'
+      }
+    });
+    const html = pageRes.data;
+
+    // 提取 guid（视频唯一标识）
+    const guidMatch = html.match(/guid\s*=\s*['"]\s*([^'"]+)['"]/);
+    if (!guidMatch) {
+      return res.status(400).json({ success: false, message: '无法获取视频标识' });
+    }
+    const guid = guidMatch[1].trim();
+
+    // 第二步：通过 CCTV vdn API 获取视频播放地址（包含 m3u8）
+    // 注意：guid 不是 pid，需要用 vdn.apps.cntv.cn 接口
+    const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${guid}`;
+    const apiRes = await axios.get(apiUrl, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://tv.cctv.com/'
+      }
+    });
+
+    const videoData = apiRes.data;
+    let videoUrl = '';
+    let videoType = 'm3u8';
+
+    // 优先使用 hls_url（m3u8 流）
+    if (videoData.hls_url) {
+      videoUrl = videoData.hls_url;
+    } else if (videoData.video && videoData.video.url) {
+      // 兜底使用 video.url（mp4）
+      videoUrl = videoData.video.url;
+      videoType = 'mp4';
+    }
+
+    if (!videoUrl) {
+      return res.status(400).json({ success: false, message: '无法获取视频播放地址' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: parseInt(id),
+        title: newsItem.title,
+        guid,
+        videoUrl,
+        videoType
+      }
+    });
+  } catch (error) {
+    console.error('获取视频地址错误:', error.message);
+    res.status(500).json({ success: false, message: '获取视频地址失败：' + error.message });
+  } finally {
+    if (pool) await pool.end();
+  }
+});
+
+/**
+ * @route   GET /api/video/proxy
+ * @desc    视频代理接口，用于绕过 CCTV 的 referer 限制
+ *          代理 m3u8 和 ts 视频分片请求
+ * @query   url - 需要代理的视频文件地址
+ */
+router.get('/video/proxy', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) {
+      return res.status(400).json({ success: false, message: '缺少 url 参数' });
+    }
+
+    const decodedUrl = decodeURIComponent(url);
+    
+    const response = await axios.get(decodedUrl, {
+      timeout: 30000,
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://tv.cctv.com/',
+        'Origin': 'https://tv.cctv.com'
+      }
+    });
+
+    // 设置响应头
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range');
+
+    // 如果是 m3u8 文件，需要代理重写内部的 URL
+    if (contentType.includes('m3u8') || decodedUrl.endsWith('.m3u8')) {
+      let data = '';
+      response.data.on('data', (chunk) => { data += chunk.toString(); });
+      response.data.on('end', () => {
+        // 重写 m3u8 中的 ts 地址，使其也通过代理
+        const baseUrl = decodedUrl.substring(0, decodedUrl.lastIndexOf('/') + 1);
+        const rewritten = data.replace(/([^\n]+\.(ts|m3u8)[^\n]*)/gi, (match) => {
+          if (match.startsWith('http')) {
+            return `/api/video/proxy?url=${encodeURIComponent(match)}`;
+          } else {
+            return `/api/video/proxy?url=${encodeURIComponent(baseUrl + match)}`;
+          }
+        });
+        res.send(rewritten);
+      });
+    } else {
+      // 直接代理 ts/mp4 等二进制流
+      response.data.pipe(res);
+    }
+  } catch (error) {
+    console.error('视频代理错误:', error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: '视频代理失败' });
+    }
+  }
+});
+
 module.exports = router;
