@@ -237,16 +237,14 @@ export default {
           const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
           if (res.data.success) {
             news.value = res.data.data
-          } else if (fallbackUrl) {
-            // 新闻已被同步删除，使用后备信息
-            // 提取 VIDE ID 用于 /video 接口
+          } else if (fallbackUrl && (fallbackType === 'video' || fallbackUrl.includes('/VIDE'))) {
+            // 新闻已被同步删除，但知道是视频且有 source_url，尝试播放
             const vidMatch = fallbackUrl.match(/VIDE\w+/)
             const fallbackId = vidMatch ? vidMatch[0] : newsId
-
             news.value = {
               id: fallbackId,
               title: fallbackTitle || '新闻',
-              type: fallbackType || 'video',
+              type: 'video',
               source_url: fallbackUrl,
               reporter: '央视新闻',
               source: 'news.cctv.com',
@@ -255,7 +253,7 @@ export default {
             }
             setTimeout(() => loadVideo(), 200)
           } else {
-            error.value = '获取新闻详情失败'
+            error.value = '新闻不存在或已过期'
           }
         }
       } catch (err) {
