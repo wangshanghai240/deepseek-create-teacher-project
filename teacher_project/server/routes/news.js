@@ -41,6 +41,8 @@ function isVideoPage(html) {
   // 标题带 [栏目标题] 前缀通常是视频（如 [新闻直播间]xxx）
   const titleMatch = html.match(/<title>([^<]+)<\/title>/);
   if (titleMatch && /^\[.+\]/.test(titleMatch[1])) return true;
+  // 页面包含 htmlVideoCode（内嵌视频代码）
+  if (html.includes('htmlVideoCode')) return true;
   // 页面没有 contentdate 但有视频播放器相关元素
   if (!html.includes('contentdate') && (html.includes('class="player"') || html.includes('video-player'))) return true;
   return false;
