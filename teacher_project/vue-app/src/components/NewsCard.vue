@@ -62,8 +62,24 @@ export default {
     const page = ref(1)
     const hasMore = ref(true)
     const PAGE_SIZE = 10
+    const CACHE_KEY = 'news_cache'
 
-    const fetchNews = async () => {
+    const fetchNews = async (forceRefresh = false) => {
+      // 尝试从缓存恢复
+      if (!forceRefresh) {
+        const cached = sessionStorage.getItem(CACHE_KEY)
+        if (cached) {
+          try {
+            const data = JSON.parse(cached)
+            newsList.value = data.list
+            page.value = data.page
+            hasMore.value = data.hasMore
+            loading.value = false
+            return
+          } catch (e) { /* 缓存解析失败，重新加载 */ }
+        }
+      }
+
       loading.value = true
       error.value = ''
       page.value = 1
@@ -72,6 +88,8 @@ export default {
         if (res.data.success) {
           newsList.value = res.data.data.list
           hasMore.value = res.data.data.pagination.page < res.data.data.pagination.totalPages
+          // 保存到缓存
+          saveCache(res.data.data.list, 1, hasMore.value)
         } else {
           error.value = '获取新闻失败'
         }
@@ -83,6 +101,16 @@ export default {
       }
     }
 
+    const saveCache = (list, currentPage, more) => {
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          list,
+          page: currentPage,
+          hasMore: more
+        }))
+      } catch (e) { /* 存储失败忽略 */ }
+    }
+
     const loadMore = async () => {
       loadingMore.value = true
       const nextPage = page.value + 1
@@ -90,9 +118,12 @@ export default {
         const res = await axios.get(`/api/news?limit=${PAGE_SIZE}&page=${nextPage}`, { timeout: 10000 })
         if (res.data.success) {
           const newItems = res.data.data.list
-          newsList.value = [...newsList.value, ...newItems]
+          const merged = [...newsList.value, ...newItems]
+          newsList.value = merged
           page.value = nextPage
           hasMore.value = res.data.data.pagination.page < res.data.data.pagination.totalPages
+          // 更新缓存
+          saveCache(merged, nextPage, hasMore.value)
         }
       } catch (err) {
         console.error('加载更多新闻失败:', err)
@@ -125,9 +156,9 @@ export default {
       return `${month}-${day} ${hour}:${min}`
     }
 
-    onMounted(fetchNews)
+    onMounted(() => fetchNews())
 
-    return { newsList, loading, loadingMore, error, hasMore, openNews, formatTime, loadMore }
+    return { newsList, loading, loadingMore, error, hasMore, openNews, formatTime, loadMore, fetchNews }
   }
 }
 </script>

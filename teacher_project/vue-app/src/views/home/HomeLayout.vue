@@ -2,7 +2,11 @@
   <div class="home-layout">
     <!-- 页面内容区域 -->
     <div class="content-area">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['HomePage']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </div>
 
     <!-- 底部导航栏 -->
