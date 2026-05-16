@@ -337,27 +337,46 @@ router.get('/news/:id/video', async (req, res) => {
     const isVideId = /^VIDE/i.test(id);
 
     if (isVideId) {
-      // 直接使用 VIDE ID 作为 videoId 获取视频
-      const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${id}`;
-      const apiRes = await axios.get(apiUrl, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://tv.cctv.com/'
-        }
-      });
-      const videoData = apiRes.data;
-      if (videoData.hls_url) {
-        return res.json({
-          success: true,
-          data: {
-            id,
-            title: videoData.title || '新闻联播',
-            videoId: id,
-            videoUrl: videoData.hls_url,
-            videoType: 'm3u8'
-          }
+      // VIDE ID 不能直接用于 API，需要先抓页面提取 guid
+      // VIDE ID 末尾6位是日期 YYMMDD
+      const dateMatch = id.match(/(\d{6})$/);
+      if (!dateMatch) {
+        return res.status(400).json({ success: false, message: '无效的视频ID' });
+      }
+      const dateStr = dateMatch[1]; // 260516
+      const pageUrl = `https://tv.cctv.com/20${dateStr.substring(0, 2)}/${dateStr.substring(2, 4)}/${dateStr.substring(4, 6)}/${id}.shtml`;
+      
+      try {
+        const pageRes = await axios.get(pageUrl, {
+          timeout: 15000,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
         });
+        const html = pageRes.data;
+        const guidMatch = html.match(/guid\s*=\s*['"]\s*([^'"]+)['"]/);
+        if (!guidMatch) {
+          return res.status(400).json({ success: false, message: '无法获取视频标识' });
+        }
+        const guid = guidMatch[1].trim();
+        
+        const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${guid}`;
+        const apiRes = await axios.get(apiUrl, {
+          timeout: 15000,
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://tv.cctv.com/' }
+        });
+        if (apiRes.data.hls_url) {
+          return res.json({
+            success: true,
+            data: {
+              id,
+              title: apiRes.data.title || '新闻联播',
+              videoId: guid,
+              videoUrl: apiRes.data.hls_url,
+              videoType: 'm3u8'
+            }
+          });
+        }
+      } catch (e) {
+        console.error('VIDE ID 处理失败:', e.message);
       }
       return res.status(400).json({ success: false, message: '无法获取视频播放地址' });
     }
