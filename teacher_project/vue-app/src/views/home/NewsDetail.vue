@@ -110,8 +110,10 @@ export default {
         hlsInstance = null
       }
 
-      // Safari 原生支持 HLS
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // 移动端 Edge/Chrome 以及 Safari 都原生支持 HLS
+      // canPlayType 返回 "probably" 或 "maybe" 都表示支持
+      const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl') !== ''
+      if (canNativeHls) {
         video.src = url
         video.addEventListener('error', () => {
           videoError.value = '视频加载失败'
@@ -120,7 +122,6 @@ export default {
         video.play().then(() => {
           videoStatus.value = 'ready'
         }).catch(() => {
-          // 自动播放被阻止，但用户会手动点击播放
           videoStatus.value = 'ready'
         })
         return

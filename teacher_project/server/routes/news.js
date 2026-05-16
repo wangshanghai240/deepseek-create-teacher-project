@@ -409,8 +409,14 @@ router.get('/video/proxy', async (req, res) => {
         res.send(rewritten);
       });
     } else {
-      // 直接代理 ts/mp4 等二进制流
-      response.data.pipe(res);
+      // 代理 ts/mp4 等二进制流 - 先收集完整数据再发送，避免 chunked 传输
+      const chunks = [];
+      response.data.on('data', (chunk) => chunks.push(chunk));
+      response.data.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        res.setHeader('Content-Length', buffer.length);
+        res.end(buffer);
+      });
     }
   } catch (error) {
     console.error('视频代理错误:', error.message);
