@@ -12,12 +12,18 @@
     <div v-else class="news-list">
       <div
         class="news-card"
+        :class="item.type"
         v-for="item in newsList"
         :key="item.id"
         @click="openNews(item)"
       >
         <div class="news-card-body">
-          <div class="news-card-title">{{ item.title }}</div>
+          <div class="news-card-title">
+            {{ item.title }}
+            <span class="news-type-tag" :class="item.type || 'article'">
+              {{ (item.type || 'article') === 'video' ? '视频' : '文章' }}
+            </span>
+          </div>
           <div class="news-card-summary">{{ item.summary }}</div>
           <div class="news-card-footer">
             <span class="news-reporter" v-if="item.reporter">📝 {{ item.reporter }}</span>
@@ -209,6 +215,35 @@ export default {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 视频/文章标签 */
+.news-type-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.news-type-tag.video {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.news-type-tag.article {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
+/* 视频卡片特殊样式 */
+.news-card.video {
+  border-left: 3px solid #ff9800;
 }
 
 .news-card-summary {

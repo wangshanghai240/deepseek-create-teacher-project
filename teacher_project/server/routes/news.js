@@ -12,6 +12,15 @@ const dbPoolConfig = {
 };
 
 /**
+ * 判断新闻是否为视频类型
+ * CCTV 视频新闻的 URL 包含 tv.cctv.com 域名或 VIDE 标识
+ */
+function isVideoUrl(url) {
+  if (!url) return false;
+  return url.includes('tv.cctv.com') || url.includes('/VIDE');
+}
+
+/**
  * @route   GET /api/news
  * @desc    获取新闻列表（按时间倒序）
  * @query   page - 页码（默认1）
@@ -35,10 +44,16 @@ router.get('/news', async (req, res) => {
       `SELECT id, title, summary, reporter, source, source_url, image_url, created_at FROM news ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
     );
 
+    // 标记每条新闻的类型：视频或文章
+    const list = rows.map(item => ({
+      ...item,
+      type: isVideoUrl(item.source_url) ? 'video' : 'article'
+    }));
+
     res.json({
       success: true,
       data: {
-        list: rows,
+        list,
         pagination: {
           page,
           limit,
@@ -75,7 +90,9 @@ router.get('/news/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: '新闻不存在' });
     }
 
-    res.json({ success: true, data: rows[0] });
+    const newsItem = rows[0];
+    newsItem.type = isVideoUrl(newsItem.source_url) ? 'video' : 'article';
+    res.json({ success: true, data: newsItem });
   } catch (error) {
     console.error('获取新闻详情错误:', error.message);
     res.status(500).json({ success: false, message: '获取新闻详情失败：' + error.message });
@@ -198,6 +215,7 @@ router.get('/news/:id/full', async (req, res) => {
     }
 
     newsItem.fullContent = fullContent;
+    newsItem.type = isVideoUrl(newsItem.source_url) ? 'video' : 'article';
 
     res.json({ success: true, data: newsItem });
   } catch (error) {

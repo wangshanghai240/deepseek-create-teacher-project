@@ -21,6 +21,9 @@
     <template v-else-if="news">
       <div class="news-header">
         <h1 class="news-title">{{ news.title }}</h1>
+        <div class="news-type-badge" :class="news.type">
+          {{ news.type === 'video' ? '📺 视频' : '📰 文章' }}
+        </div>
         <div class="news-meta">
           <span v-if="news.reporter">📝 {{ news.reporter }}</span>
           <span v-if="news.source">来源：{{ news.source }}</span>
@@ -31,11 +34,23 @@
         </div>
       </div>
 
-      <div class="news-content" v-html="renderContent(news.fullContent || news.content || news.summary || '')"></div>
+      <!-- 视频新闻：嵌入视频播放 -->
+      <div v-if="news.type === 'video' && news.source_url" class="video-wrapper">
+        <iframe
+          :src="getVideoEmbedUrl(news.source_url)"
+          class="video-iframe"
+          frameborder="0"
+          allowfullscreen
+          allow="autoplay; encrypted-media"
+        ></iframe>
+      </div>
+
+      <!-- 文章新闻：展示文字内容 -->
+      <div v-else class="news-content" v-html="renderContent(news.fullContent || news.content || news.summary || '')"></div>
 
       <div class="news-footer">
         <a v-if="news.source_url" :href="news.source_url" target="_blank" class="source-link">
-          查看原文 ↗
+          {{ news.type === 'video' ? '观看原视频 ↗' : '查看原文 ↗' }}
         </a>
       </div>
     </template>
@@ -100,9 +115,25 @@ export default {
         .join('')
     }
 
+    /**
+     * 将 CCTV 视频 URL 转为可嵌入的 iframe 地址
+     * tv.cctv.com 视频可通过特定格式嵌入
+     */
+    const getVideoEmbedUrl = (url) => {
+      if (!url) return ''
+      // 从 URL 中提取视频 ID
+      const match = url.match(/VIDE(\w+)/)
+      if (match) {
+        const videoId = match[0]
+        return `https://tv.cctv.com/embed/player.php?vid=${videoId}&autoplay=false`
+      }
+      // 如果无法提取，直接返回原链接（用户点击查看原文打开）
+      return url
+    }
+
     onMounted(fetchNewsDetail)
 
-    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent }
+    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, getVideoEmbedUrl }
   }
 }
 </script>
@@ -228,6 +259,46 @@ export default {
   margin-bottom: 16px;
   text-indent: 2em;
   line-height: 1.8;
+}
+
+/* 视频/文章标记 */
+.news-type-badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.news-type-badge.video {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.news-type-badge.article {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* 视频播放器容器 */
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 宽高比 */
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background: #000;
+}
+
+.video-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 
 .news-footer {
