@@ -201,12 +201,31 @@ export default {
     const fetchNewsDetail = async () => {
       loading.value = true
       error.value = ''
+
+      // 判断是否为 VIDE ID（新闻联播视频）
+      const isVideoId = /^VIDE/i.test(newsId)
+
       try {
-        const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
-        if (res.data.success) {
-          news.value = res.data.data
+        if (isVideoId) {
+          // 新闻联播视频：直接构造播放信息
+          news.value = {
+            id: newsId,
+            title: '新闻联播',
+            type: 'video',
+            source_url: 'https://tv.cctv.com/' + newsId.substring(0, 4) + '/' + newsId.substring(4, 6) + '/' + newsId.substring(6, 8) + '/' + newsId + '.shtml',
+            reporter: '央视新闻',
+            source: 'news.cctv.com',
+            created_at: new Date().toISOString()
+          }
+          // 直接加载视频
+          setTimeout(() => loadVideo(), 200)
         } else {
-          error.value = '获取新闻详情失败'
+          const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
+          if (res.data.success) {
+            news.value = res.data.data
+          } else {
+            error.value = '获取新闻详情失败'
+          }
         }
       } catch (err) {
         console.error('获取新闻详情失败:', err)

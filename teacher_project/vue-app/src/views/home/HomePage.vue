@@ -21,6 +21,9 @@
       </div>
     </div>
 
+    <!-- 新闻联播 -->
+    <XinwenLianbo />
+
     <!-- 新闻卡片区域 -->
     <NewsCard />
 
@@ -34,10 +37,11 @@
 <script>
 import { ref } from 'vue'
 import NewsCard from '../../components/NewsCard.vue'
+import XinwenLianbo from '../../components/XinwenLianbo.vue'
 
 export default {
   name: 'HomePage',
-  components: { NewsCard },
+  components: { NewsCard, XinwenLianbo },
   setup() {
     const userInfo = ref(JSON.parse(localStorage.getItem('user') || '{}'))
     return { userInfo }

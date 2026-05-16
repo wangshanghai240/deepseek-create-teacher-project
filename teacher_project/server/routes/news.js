@@ -49,6 +49,68 @@ function isVideoPage(html) {
 }
 
 /**
+ * @route   GET /api/news/xwlb
+ * @desc    获取新闻联播视频列表（支持日期选择）
+ * @query   date - 日期，格式 YYYYMMDD，默认当天
+ */
+router.get('/news/xwlb', async (req, res) => {
+  try {
+    const now = new Date();
+    const dateStr = req.query.date || 
+      `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+
+    const pageRes = await axios.get(`https://tv.cctv.com/lm/xwlb/?date=${dateStr}`, {
+      timeout: 15000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+
+    const html = pageRes.data;
+
+    // 提取所有视频链接（去重）
+    const allLinks = [...new Set(html.match(/https:\/\/tv\.cctv\.com\/[^\s"']*?\.shtml/g) || [])];
+    const videoLinks = allLinks.filter(l => l.includes('VIDE') && !l.includes('/lm/') && !l.includes('/search/'));
+
+    // 提取每个视频的标题
+    const videos = [];
+    const linkRegex = /<a[^>]*href="(https:\/\/tv\.cctv\.com\/[^"]+\.shtml)"[^>]*>([\s\S]{0,80})<\/a>/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      const url = match[1];
+      if (!url.includes('VIDE') || url.includes('/lm/')) continue;
+
+      let title = match[2].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      title = title.replace(/^完整版/, '').replace(/^\[视频\]/, '').trim();
+
+      if (title && !videos.find(v => v.url === url)) {
+        videos.push({ title, url, date: dateStr });
+      }
+    }
+
+    if (videos.length === 0) {
+      videoLinks.forEach((url, i) => {
+        videos.push({ title: `新闻联播片段 ${i + 1}`, url, date: dateStr });
+      });
+    }
+
+    const fullVideo = videos.find(v => v.title.includes('新闻联播'));
+    const fullEpisode = fullVideo || (videos.length > 0 ? videos[0] : null);
+
+    res.json({
+      success: true,
+      data: {
+        date: dateStr,
+        fullEpisode,
+        clips: videos.filter(v => v !== fullEpisode),
+        total: videos.length
+      }
+    });
+  } catch (error) {
+    console.error('获取新闻联播错误:', error.message);
+    res.status(500).json({ success: false, message: '获取新闻联播失败：' + error.message });
+  }
+});
+
+/**
  * @route   GET /api/news
  * @desc    获取新闻列表（按时间倒序）
  * @query   page - 页码（默认1）
@@ -270,6 +332,36 @@ router.get('/news/:id/video', async (req, res) => {
   let pool;
   try {
     const { id } = req.params;
+
+    // 支持直接传入 VIDE ID（新闻联播等外部视频）
+    const isVideId = /^VIDE/i.test(id);
+
+    if (isVideId) {
+      // 直接使用 VIDE ID 作为 videoId 获取视频
+      const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${id}`;
+      const apiRes = await axios.get(apiUrl, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': 'https://tv.cctv.com/'
+        }
+      });
+      const videoData = apiRes.data;
+      if (videoData.hls_url) {
+        return res.json({
+          success: true,
+          data: {
+            id,
+            title: videoData.title || '新闻联播',
+            videoId: id,
+            videoUrl: videoData.hls_url,
+            videoType: 'm3u8'
+          }
+        });
+      }
+      return res.status(400).json({ success: false, message: '无法获取视频播放地址' });
+    }
+
     pool = mysql.createPool(dbPoolConfig);
 
     const [rows] = await pool.execute(
