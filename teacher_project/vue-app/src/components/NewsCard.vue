@@ -134,8 +134,13 @@ export default {
     }
 
     const openNews = (item) => {
-      // App 内打开新闻详情页，而不是外部浏览器
-      window.location.href = '/home/news/' + item.id
+      // 传递完整信息作为后备（source_url、title、type）
+      const params = new URLSearchParams({
+        t: item.title || '',
+        u: item.source_url || '',
+        tp: item.type || ''
+      })
+      window.location.href = '/home/news/' + item.id + '?' + params.toString()
     }
 
     const formatTime = (timeStr) => {

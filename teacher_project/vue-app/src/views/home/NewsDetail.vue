@@ -95,10 +95,14 @@ export default {
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
     const newsId = window.location.pathname.split('/').pop()
+    
+    // 从 URL 查询参数获取后备信息（由 NewsCard 传递）
+    const urlParams = new URLSearchParams(window.location.search)
+    const fallbackTitle = urlParams.get('t') || ''
+    const fallbackUrl = urlParams.get('u') || ''
+    const fallbackType = urlParams.get('tp') || ''
 
-    // 调试日志
-    console.log('NewsDetail 路径:', window.location.pathname)
-    console.log('NewsDetail newsId:', newsId)
+    console.log('NewsDetail newsId:', newsId, 'fallbackUrl:', fallbackUrl.substring(0, 40))
 
     /**
      * 播放 m3u8 视频
@@ -230,6 +234,20 @@ export default {
           const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
           if (res.data.success) {
             news.value = res.data.data
+          } else if (fallbackUrl) {
+            // 新闻已被同步删除，使用后备信息构造播放对象
+            news.value = {
+              id: newsId,
+              title: fallbackTitle || '新闻',
+              type: fallbackType || 'video',
+              source_url: fallbackUrl,
+              reporter: '央视新闻',
+              source: 'news.cctv.com',
+              created_at: new Date().toISOString(),
+              fullContent: ''
+            }
+            // 如果是视频，触发加载
+            setTimeout(() => loadVideo(), 200)
           } else {
             error.value = '获取新闻详情失败'
           }
