@@ -10,6 +10,8 @@ const mysql = require('mysql2/promise'); // 直接使用 mysql2，不通过 crea
 // Express 4.18+ 内置了 JSON 和 URL-encoded body parser，无需额外安装 body-parser
 const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
+const uploadRoutes = require('./routes/upload');
+const newsRoutes = require('./routes/news');
 
 // 创建应用实例（必须在使用 express() 之前）
 const app = express();
@@ -28,9 +30,14 @@ if (isProduction) {
   console.log('✓ 生产模式：前端静态文件已加载')
 }
 
+// 静态文件服务 - 允许访问上传的图片
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API 路由挂载
 app.use('/api', authRoutes);
 app.use('/api', postRoutes);
+app.use('/api', uploadRoutes);
+app.use('/api', newsRoutes);
 
 // 健康检查接口
 app.get('/', (req, res) => {
@@ -104,6 +111,10 @@ const startServer = async () => {
         console.log(`💡 如需外网访问，请在服务器防火墙开放端口 ${PORT}`);
       }
       console.log('========================================');
+
+      // 启动新闻定时同步（每 30 分钟从 CCTV 获取最新新闻，最多保留 30 条）
+      const { startNewsSync } = require('./sync_news');
+      startNewsSync(true);
     });
   } catch (error) {
     console.error('服务器启动失败:', error.message);

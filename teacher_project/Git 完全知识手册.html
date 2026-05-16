@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Git 完全知识手册</title>
+<style>
+  @page { margin: 2cm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+    color: #1a1a2e;
+    line-height: 1.8;
+    padding: 40px 60px;
+    background: #fff;
+  }
+  h1 { font-size: 32px; text-align: center; margin-bottom: 8px; color: #e44d26; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 40px; font-size: 14px; border-bottom: 3px solid #e44d26; padding-bottom: 20px; }
+  h2 {
+    font-size: 22px; color: #e44d26; margin: 40px 0 16px;
+    border-left: 5px solid #e44d26; padding-left: 14px;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 18px; color: #2d3436; margin: 28px 0 12px; page-break-after: avoid; }
+  h4 { font-size: 15px; color: #636e72; margin: 18px 0 8px; }
+  p { margin-bottom: 12px; text-indent: 2em; }
+  p.no-indent { text-indent: 0; }
+  ul, ol { margin: 10px 0 10px 2em; }
+  li { margin-bottom: 6px; }
+  code {
+    background: #f1f2f6; padding: 2px 7px; border-radius: 4px;
+    font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; color: #c0392b;
+  }
+  pre {
+    background: #2d3436; color: #dfe6e9; padding: 16px 20px; border-radius: 8px;
+    overflow-x: auto; font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px; line-height: 1.6; margin: 12px 0;
+    page-break-inside: avoid;
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  .cmd { color: #74b9ff; }
+  .comment { color: #636e72; font-style: italic; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 16px 0;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #dfe6e9; padding: 10px 14px; text-align: left;
+  }
+  th { background: #e44d26; color: #fff; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .tip {
+    background: #e8f4f8; border-left: 5px solid #0984e3; padding: 12px 16px;
+    border-radius: 4px; margin: 14px 0;
+  }
+  .warning {
+    background: #fef3e2; border-left: 5px solid #f39c12; padding: 12px 16px;
+    border-radius: 4px; margin: 14px 0;
+  }
+  .danger {
+    background: #fee8e8; border-left: 5px solid #e74c3c; padding: 12px 16px;
+    border-radius: 4px; margin: 14px 0;
+  }
+  .toc { margin: 30px 0; }
+  .toc a { color: #0984e3; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc li { margin-bottom: 4px; }
+  .section-divider { border: none; border-top: 1px dashed #dfe6e9; margin: 30px 0; }
+  .footer { text-align: center; color: #999; font-size: 12px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #dfe6e9; }
+  @media print {
+    body { padding: 0; }
+    pre { background: #f5f5f5 !important; color: #333 !important; }
+    pre code { color: #333 !important; }
+    .cmd { color: #0066cc !important; }
+    .comment { color: #999 !important; }
+    h2, h3, h4 { page-break-after: avoid; }
+    .tip, .warning, .danger { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🐙 Git 完全知识手册</h1>
+<p class="subtitle">从入门到精通 · 涵盖日常开发所有场景 · 2026 版</p>
+
+<div class="toc">
+<h2>📖 目录</h2>
+<ol>
+  <li><a href="#ch1">Git 简介与核心概念</a></li>
+  <li><a href="#ch2">Git 安装与配置</a></li>
+  <li><a href="#ch3">基础操作：初始化、暂存与提交</a></li>
+  <li><a href="#ch4">分支管理</a></li>
+  <li><a href="#ch5">远程仓库</a></li>
+  <li><a href="#ch6">撤销与回退</a></li>
+  <li><a href="#ch7">合并与变基</a></li>
+  <li><a href="#ch8">标签管理</a></li>
+  <li><a href="#ch9">.gitignore 文件</a></li>
+  <li><a href="#ch10">工作流模型</a></li>
+  <li><a href="#ch11">常用高级技巧</a></li>
+  <li><a href="#ch12">常见问题与解决方案</a></li>
+  <li><a href="#ch13">命令速查表</a></li>
+</ol>
+</div>
+
+<hr class="section-divider">
+
+<!-- ==================== 第一章 ==================== -->
+<h2 id="ch1">一、Git 简介与核心概念</h2>
+
+<h3>1.1 什么是 Git？</h3>
+<p>Git 是目前世界上最先进的 <strong>分布式版本控制系统</strong>（DVCS），由 Linux 之父 Linus Torvalds 于 2005 年创建。最初是为了更好地管理 Linux 内核源码而开发的。</p>
+
+<h3>1.2 为什么选择 Git？</h3>
+<ul>
+  <li><strong>分布式</strong>：每个开发者本地都有完整的仓库副本，即使服务器离线也能正常工作</li>
+  <li><strong>分支轻量</strong>：创建和切换分支几乎是瞬时操作，鼓励频繁分支</li>
+  <li><strong>数据完整性</strong>：所有数据在存储前都经过 SHA-1 哈希校验，保证内容不被篡改</li>
+  <li><strong>暂存区机制</strong>：允许精细控制每次提交的内容</li>
+  <li><strong>强大的社区</strong>：GitHub、GitLab、Gitee 等平台广泛使用</li>
+</ul>
+
+<h3>1.3 Git 的三个区域</h3>
+<table>
+  <tr><th>区域</th><th>说明</th></tr>
+  <tr><td>工作区 (Working Directory)</td><td>你电脑上看到的实际文件</td></tr>
+  <tr><td>暂存区 (Staging Area / Index)</td><td>存放即将提交的文件快照，位于 <code>.git/index</code></td></tr>
+  <tr><td>本地仓库 (Repository)</td><td><code>.git</code> 目录，存储所有历史版本数据</td></tr>
+</table>
+
+<h3>1.4 Git 文件的四种状态</h3>
+<table>
+  <tr><th>状态</th><th>含义</th></tr>
+  <tr><td>未跟踪 (Untracked)</td><td>文件未被 Git 管理，新增文件默认此状态</td></tr>
+  <tr><td>已跟踪 (Tracked)</td><td>
+    <ul>
+      <li><strong>未修改 (Unmodified)</strong>：文件自上次提交后未改动</li>
+      <li><strong>已修改 (Modified)</strong>：文件已被修改但尚未暂存</li>
+      <li><strong>已暂存 (Staged)</strong>：修改已添加到暂存区，等待提交</li>
+    </ul>
+  </td></tr>
+</table>
+
+<pre>
+工作区 ──git add──▶ 暂存区 ──git commit──▶ 本地仓库 ──git push──▶ 远程仓库
+   ▲                    │
+   └────git checkout────┘
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第二章 ==================== -->
+<h2 id="ch2">二、Git 安装与配置</h2>
+
+<h3>2.1 安装 Git</h3>
+<table>
+  <tr><th>操作系统</th><th>安装方式</th></tr>
+  <tr><td>Windows</td><td>下载 <a href="https://git-scm.com/download/win">git-scm.com</a> 安装包，安装时会集成 Git Bash</td></tr>
+  <tr><td>macOS</td><td><code>brew install git</code> 或安装 Xcode Command Line Tools</td></tr>
+  <tr><td>Linux (Ubuntu/Debian)</td><td><code>sudo apt install git</code></td></tr>
+  <tr><td>Linux (CentOS/RHEL)</td><td><code>sudo yum install git</code></td></tr>
+</table>
+
+<h3>2.2 初次配置</h3>
+<p class="no-indent">安装完 Git 后，第一件事就是设置用户名和邮箱——每次提交都会携带这些信息。</p>
+<pre>
+<span class="cmd">git config --global user.name</span> "Your Name"
+<span class="cmd">git config --global user.email</span> "your@email.com"
+</pre>
+
+<h3>2.3 配置级别</h3>
+<table>
+  <tr><th>级别</th><th>作用域</th><th>配置文件路径</th><th>命令</th></tr>
+  <tr><td><code>--system</code></td><td>系统所有用户</td><td><code>/etc/gitconfig</code></td><td>需管理员权限</td></tr>
+  <tr><td><code>--global</code></td><td>当前用户所有仓库</td><td><code>~/.gitconfig 或 ~/.config/git/config</code></td><td>最常用</td></tr>
+  <tr><td><code>--local</code></td><td>当前仓库（默认）</td><td><code>.git/config</code></td><td>优先级最高</td></tr>
+</table>
+
+<h3>2.4 常用配置项</h3>
+<pre>
+<span class="comment"># 设置默认编辑器</span>
+<span class="cmd">git config --global core.editor</span> "code --wait"   <span class="comment"># VS Code</span>
+<span class="cmd">git config --global core.editor</span> "vim"
+
+<span class="comment"># 设置默认分支名</span>
+<span class="cmd">git config --global init.defaultBranch</span> main
+
+<span class="comment"># 启用颜色输出</span>
+<span class="cmd">git config --global color.ui</span> auto
+
+<span class="comment"># 查看所有配置</span>
+<span class="cmd">git config --list</span>
+
+<span class="comment"># 查看某个配置项</span>
+<span class="cmd">git config user.name</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第三章 ==================== -->
+<h2 id="ch3">三、基础操作：初始化、暂存与提交</h2>
+
+<h3>3.1 创建新仓库</h3>
+<pre>
+<span class="comment"># 方式一：在当前目录初始化</span>
+<span class="cmd">cd</span> my-project
+<span class="cmd">git init</span>
+
+<span class="comment"># 方式二：克隆远程仓库</span>
+<span class="cmd">git clone</span> https://github.com/user/repo.git
+<span class="cmd">git clone</span> git@github.com:user/repo.git        <span class="comment"># SSH 方式</span>
+<span class="cmd">git clone</span> https://github.com/user/repo.git my-folder  <span class="comment"># 指定目录名</span>
+</pre>
+
+<h3>3.2 查看状态</h3>
+<pre>
+<span class="comment"># 查看工作区和暂存区状态（最常用命令之一）</span>
+<span class="cmd">git status</span>
+
+<span class="comment"># 简洁模式</span>
+<span class="cmd">git status -s</span>    <span class="comment"># 或 --short</span>
+<span class="comment"># 输出示例：
+#  M README.md    ← 已修改未暂存（空格 已暂存状态）
+# M  index.html   ← 已修改已暂存（M 在第一位）
+# ?? newfile.txt  ← 未跟踪文件</span>
+</pre>
+
+<h3>3.3 暂存文件（git add）</h3>
+<pre>
+<span class="cmd">git add</span> filename.txt        <span class="comment"># 暂存单个文件</span>
+<span class="cmd">git add</span> src/               <span class="comment"># 暂存整个目录</span>
+<span class="cmd">git add .</span>                  <span class="comment"># 暂存当前目录所有变更（不含删除）</span>
+<span class="cmd">git add -A</span>                 <span class="comment"># 暂存所有变更（包括删除），等同于 git add --all</span>
+<span class="cmd">git add -p</span>                 <span class="comment"># 交互式逐块暂存（精细控制每次提交内容）</span>
+</pre>
+
+<h3>3.4 提交（git commit）</h3>
+<pre>
+<span class="comment"># 基本提交</span>
+<span class="cmd">git commit -m</span> "feat: add login page"
+
+<span class="comment"># 跳过暂存区，直接提交已跟踪文件的修改（等同于 git add + git commit）</span>
+<span class="cmd">git commit -a -m</span> "fix: resolve login bug"
+
+<span class="comment"># 修改最近一次提交的消息</span>
+<span class="cmd">git commit --amend -m</span> "新提交信息"
+
+<span class="comment"># 向最近一次提交追加文件（不修改提交信息）</span>
+<span class="cmd">git add</span> forgotten-file.js
+<span class="cmd">git commit --amend --no-edit</span>
+</pre>
+
+<div class="tip">
+<strong>💡 提交规范推荐：</strong> 使用 Conventional Commits 格式：<br>
+<code>&lt;type&gt;: &lt;简短描述&gt;</code><br>
+<code>type</code> 包括：feat（新功能）、fix（修复）、docs（文档）、style（格式）、refactor（重构）、test（测试）、chore（杂项）
+</div>
+
+<h3>3.5 查看提交历史</h3>
+<pre>
+<span class="cmd">git log</span>                         <span class="comment"># 完整历史</span>
+<span class="cmd">git log --oneline</span>              <span class="comment"># 简洁模式（一行一个提交）</span>
+<span class="cmd">git log --graph</span>                <span class="comment"># 图形化显示分支</span>
+<span class="cmd">git log --oneline --graph --all</span>  <span class="comment"># 黄金组合</span>
+<span class="cmd">git log -p</span>                     <span class="comment"># 显示每次提交的 diff</span>
+<span class="cmd">git log --author="tom"</span>         <span class="comment"># 按作者筛选</span>
+<span class="cmd">git log --since="2024-01-01"</span>  <span class="comment"># 按时间筛选</span>
+<span class="cmd">git log --grep="fix"</span>          <span class="comment"># 按提交信息搜索</span>
+<span class="cmd">git log -n 5</span>                  <span class="comment"># 只看最近 5 条</span>
+<span class="cmd">git reflog</span>                    <span class="comment"># 查看所有 HEAD 移动记录（救命的命令！）</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第四章 ==================== -->
+<h2 id="ch4">四、分支管理</h2>
+
+<h3>4.1 分支简介</h3>
+<p>分支是 Git 的核心特性。Git 的分支本质上只是一个指向某次提交的 <strong>可变指针</strong>。创建新分支的成本极低，因此在 Git 中鼓励频繁使用分支。</p>
+
+<pre>
+<span class="comment"># 查看分支</span>
+<span class="cmd">git branch</span>                     <span class="comment"># 查看本地分支（* 表示当前分支）</span>
+<span class="cmd">git branch -r</span>                 <span class="comment"># 查看远程分支</span>
+<span class="cmd">git branch -a</span>                 <span class="comment"># 查看所有分支（本地+远程）</span>
+<span class="cmd">git branch -v</span>                 <span class="comment"># 查看分支及最新提交</span>
+</pre>
+
+<h3>4.2 创建与切换分支</h3>
+<pre>
+<span class="comment"># 创建分支</span>
+<span class="cmd">git branch</span> feature-login
+
+<span class="comment"># 切换分支</span>
+<span class="cmd">git checkout</span> feature-login
+
+<span class="comment"># 创建并切换（一步完成）</span>
+<span class="cmd">git checkout -b</span> feature-login
+
+<span class="comment"># 新方式（推荐）</span>
+<span class="cmd">git switch</span> feature-login        <span class="comment"># 切换</span>
+<span class="cmd">git switch -c</span> new-branch       <span class="comment"># 创建并切换</span>
+</pre>
+
+<h3>4.3 删除分支</h3>
+<pre>
+<span class="comment"># 删除本地分支</span>
+<span class="cmd">git branch -d</span> feature-login    <span class="comment"># 安全删除（已合并）</span>
+<span class="cmd">git branch -D</span> feature-login    <span class="comment"># 强制删除（未合并也可删除）</span>
+
+<span class="comment"># 删除远程分支</span>
+<span class="cmd">git push origin --delete</span> feature-login
+<span class="comment"># 或</span>
+<span class="cmd">git push origin :</span>feature-login
+</pre>
+
+<h3>4.4 重命名分支</h3>
+<pre>
+<span class="comment"># 重命名当前分支</span>
+<span class="cmd">git branch -m</span> new-name
+
+<span class="comment"># 重命名其他分支</span>
+<span class="cmd">git branch -m</span> old-name new-name
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第五章 ==================== -->
+<h2 id="ch5">五、远程仓库</h2>
+
+<h3>5.1 管理远程仓库</h3>
+<pre>
+<span class="comment"># 查看远程仓库</span>
+<span class="cmd">git remote -v</span>                  <span class="comment"># 显示详细 URL</span>
+
+<span class="comment"># 添加远程仓库</span>
+<span class="cmd">git remote add origin</span> https://github.com/user/repo.git
+
+<span class="comment"># 修改远程仓库 URL</span>
+<span class="cmd">git remote set-url origin</span> https://github.com/user/repo.git
+
+<span class="comment"># 删除远程仓库</span>
+<span class="cmd">git remote remove</span> origin
+</pre>
+
+<h3>5.2 推送（git push）</h3>
+<pre>
+<span class="comment"># 推送到远程（并建立跟踪关系）</span>
+<span class="cmd">git push -u origin main</span>       <span class="comment"># -u = --set-upstream</span>
+
+<span class="comment"># 之后可以简写</span>
+<span class="cmd">git push</span>
+
+<span class="comment"># 推送所有本地分支</span>
+<span class="cmd">git push --all origin</span>
+
+<span class="comment"># 推送标签</span>
+<span class="cmd">git push origin --tags</span>
+
+<span class="comment"># 强制推送（谨慎使用！）</span>
+<span class="cmd">git push --force origin main</span>   <span class="comment"># 会覆盖远程历史</span>
+<span class="cmd">git push --force-with-lease</span>    <span class="comment"># 更安全的强制推送（检查远程是否有新提交）</span>
+</pre>
+
+<div class="danger">
+<strong>⚠️ 强制推送风险：</strong> 如果别人也在用同一个分支，<code>--force</code> 会删除他们的提交！始终优先使用 <code>--force-with-lease</code>。
+</div>
+
+<h3>5.3 拉取（git pull &amp; git fetch）</h3>
+<pre>
+<span class="comment"># git fetch：只下载远程数据，不自动合并</span>
+<span class="cmd">git fetch</span> origin
+<span class="cmd">git fetch origin main</span>         <span class="comment"># 只获取 main 分支</span>
+
+<span class="comment"># git pull = git fetch + git merge</span>
+<span class="cmd">git pull</span> origin main
+
+<span class="comment"># git pull 用 rebase 代替 merge</span>
+<span class="cmd">git pull --rebase</span> origin main
+<span class="comment"># 或者设置默认行为</span>
+<span class="cmd">git config --global pull.rebase</span> true
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第六章 ==================== -->
+<h2 id="ch6">六、撤销与回退</h2>
+
+<h3>6.1 撤销工作区修改</h3>
+<pre>
+<span class="comment"># 撤销单个文件的修改（回到最近一次 git add 或 git commit 的状态）</span>
+<span class="cmd">git restore</span> filename.txt
+<span class="comment"># 旧版语法</span>
+<span class="cmd">git checkout --</span> filename.txt
+</pre>
+
+<h3>6.2 撤销暂存</h3>
+<pre>
+<span class="comment"># 将文件从暂存区移回工作区（保留修改）</span>
+<span class="cmd">git restore --staged</span> filename.txt
+<span class="comment"># 旧版语法</span>
+<span class="cmd">git reset HEAD</span> filename.txt
+
+<span class="comment"># 撤销所有暂存的文件</span>
+<span class="cmd">git restore --staged .</span>
+</pre>
+
+<h3>6.3 撤销提交</h3>
+<pre>
+<span class="comment"># 方式一：git reset —— 回退到指定提交（会删除之后的提交记录）</span>
+<span class="cmd">git reset --soft HEAD~1</span>       <span class="comment"># 回退1个提交，修改留在暂存区</span>
+<span class="cmd">git reset --mixed HEAD~1</span>       <span class="comment"># 回退1个提交，修改留在工作区（默认）</span>
+<span class="cmd">git reset --hard HEAD~1</span>       <span class="comment"># 回退1个提交，彻底丢弃修改（⚠️ 不可恢复！）</span>
+
+<span class="comment"># 方式二：git revert —— 创建新的反提交（安全，不修改历史）</span>
+<span class="cmd">git revert HEAD</span>                <span class="comment"># 撤销最近一次提交</span>
+<span class="cmd">git revert HEAD~3</span>             <span class="comment"># 撤销倒数第4次提交</span>
+</pre>
+
+<div class="tip">
+<strong>💡 reset vs revert：</strong><br>
+<code>git reset</code> 会修改提交历史，适用于本地尚未推送的提交。<br>
+<code>git revert</code> 会创建新的提交来抵消旧提交，不会修改历史，适用于已推送的提交。
+</div>
+
+<h3>6.4 恢复已删除的分支或提交</h3>
+<pre>
+<span class="comment"># 查看所有历史操作（包括已删除的分支和已 reset 的提交）</span>
+<span class="cmd">git reflog</span>
+
+<span class="comment"># 从 reflog 中恢复</span>
+<span class="cmd">git checkout -b</span> recovered-branch HEAD@{2}
+<span class="comment"># 或</span>
+<span class="cmd">git reset --hard HEAD@{2}</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第七章 ==================== -->
+<h2 id="ch7">七、合并与变基</h2>
+
+<h3>7.1 合并（git merge）</h3>
+<pre>
+<span class="comment"># 将 feature 分支合并到当前分支</span>
+<span class="cmd">git checkout</span> main
+<span class="cmd">git merge</span> feature
+
+<span class="comment"># 创建合并提交（即使可以快进）</span>
+<span class="cmd">git merge --no-ff</span> feature
+
+<span class="comment"># 取消合并（有冲突时）</span>
+<span class="cmd">git merge --abort</span>
+</pre>
+
+<h3>7.2 变基（git rebase）</h3>
+<pre>
+<span class="comment"># 将当前分支的提交"移植"到目标分支的顶端</span>
+<span class="cmd">git checkout</span> feature
+<span class="cmd">git rebase</span> main
+
+<span class="comment"># 交互式变基（修改历史记录）</span>
+<span class="cmd">git rebase -i HEAD~3</span>          <span class="comment"># 修改最近3条提交</span>
+<span class="comment"># 交互式变基支持的操作：
+# pick    - 保留提交
+# reword  - 修改提交信息
+# edit    - 修改提交内容
+# squash  - 合并到上一个提交
+# fixup   - 合并到上一个提交（丢弃信息）
+# drop    - 删除提交</span>
+</pre>
+
+<h3>7.3 解决冲突</h3>
+<p>当合并或变基出现冲突时，Git 会在冲突文件中标记冲突区域：</p>
+<pre>
+<<<<<<< HEAD
+这是当前分支的内容
+=======
+这是合并进来的分支的内容
+>>>>>>> feature
+</pre>
+<p class="no-indent">解决步骤：</p>
+<ol>
+  <li>打开冲突文件，手动编辑保留想要的内容</li>
+  <li>删除冲突标记 <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>、<code>=======</code>、<code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code></li>
+  <li>保存文件后执行 <code>git add</code> 标记为已解决</li>
+  <li>执行 <code>git commit</code>（合并）或 <code>git rebase --continue</code>（变基）</li>
+</ol>
+
+<pre>
+<span class="comment"># 变基冲突时的其他操作</span>
+<span class="cmd">git rebase --continue</span>   <span class="comment"># 冲突解决后继续</span>
+<span class="cmd">git rebase --skip</span>       <span class="comment"># 跳过当前提交</span>
+<span class="cmd">git rebase --abort</span>      <span class="comment"># 取消变基，回到之前状态</span>
+</pre>
+
+<div class="warning">
+<strong>⚡ Git Flow 黄金法则：</strong> 不要对已推送的公共分支（如 main、develop）执行 <code>rebase</code>！它会导致提交历史重写，影响所有协作者。
+</div>
+
+<pre>
+<span class="comment"># Cherry-pick：挑选另一个分支的特定提交到当前分支</span>
+<span class="cmd">git cherry-pick</span> commit-hash
+<span class="cmd">git cherry-pick</span> hash1 hash2   <span class="comment"># 挑选多个</span>
+<span class="cmd">git cherry-pick</span> A..B           <span class="comment"># 挑选 A 之后到 B 之间的所有提交</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第八章 ==================== -->
+<h2 id="ch8">八、标签管理</h2>
+
+<h3>8.1 创建标签</h3>
+<pre>
+<span class="comment"># 轻量标签（仅一个引用）</span>
+<span class="cmd">git tag</span> v1.0.0
+
+<span class="comment"># 附注标签（包含作者、日期、信息，推荐）</span>
+<span class="cmd">git tag -a v1.0.0 -m</span> "Release version 1.0.0"
+
+<span class="comment"># 为历史提交打标签</span>
+<span class="cmd">git tag -a v0.5.0</span> commit-hash -m "Beta release"
+</pre>
+
+<h3>8.2 查看与推送标签</h3>
+<pre>
+<span class="cmd">git tag</span>                        <span class="comment"># 列出所有标签</span>
+<span class="cmd">git tag -l "v1.*"</span>             <span class="comment"># 按模式搜索标签</span>
+<span class="cmd">git show v1.0.0</span>               <span class="comment"># 查看标签详情</span>
+
+<span class="comment"># 推送标签到远程（标签不会随 git push 自动推送）</span>
+<span class="cmd">git push origin v1.0.0</span>        <span class="comment"># 推送单个标签</span>
+<span class="cmd">git push origin --tags</span>        <span class="comment"># 推送所有标签</span>
+
+<span class="comment"># 删除标签</span>
+<span class="cmd">git tag -d v1.0.0</span>             <span class="comment"># 删除本地标签</span>
+<span class="cmd">git push origin --delete v1.0.0</span>  <span class="comment"># 删除远程标签</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第九章 ==================== -->
+<h2 id="ch9">九、.gitignore 文件</h2>
+
+<h3>9.1 什么是 .gitignore？</h3>
+<p><code>.gitignore</code> 文件告诉 Git 哪些文件不需要纳入版本管理。通常用于排除：编译产物、依赖文件夹、环境配置、系统文件等。</p>
+
+<h3>9.2 常见规则</h3>
+<pre>
+<span class="comment"># 注释</span>
+
+<span class="comment"># 忽略 node_modules 文件夹</span>
+node_modules/
+
+<span class="comment"># 忽略所有 .log 文件</span>
+*.log
+
+<span class="comment"># 但不要忽略 important.log</span>
+!important.log
+
+<span class="comment"># 忽略 build 目录下所有内容</span>
+build/
+
+<span class="comment"># 忽略当前目录下的 config.env（不含子目录）</span>
+/config.env
+
+<span class="comment"># 忽略任何地方的 .env 文件</span>
+.env
+
+<span class="comment"># 忽略 .DS_Store（macOS 系统文件）</span>
+.DS_Store
+
+<span class="comment"># 忽略 Thumbs.db（Windows 缩略图缓存）</span>
+Thumbs.db
+
+<span class="comment"># 忽略 dist 文件夹</span>
+dist/
+</pre>
+
+<h3>9.3 Git 忽略规则优先级</h3>
+<ol>
+  <li><code>.gitignore</code> 文件（项目级别，提交到仓库中）</li>
+  <li><code>.git/info/exclude</code>（项目级别，不提交）</li>
+  <li><code>~/.gitignore_global</code>（全局级别，需配置 <code>git config --global core.excludesfile</code>）</li>
+</ol>
+
+<div class="tip">
+<strong>💡 注意：</strong> 如果文件已经被 Git 跟踪，后续添加 <code>.gitignore</code> 规则不会生效。需要先执行 <code>git rm --cached &lt;file&gt;</code> 停止跟踪。
+</div>
+
+<hr class="section-divider">
+
+<!-- ==================== 第十章 ==================== -->
+<h2 id="ch10">十、工作流模型</h2>
+
+<h3>10.1 GitHub Flow（最简单，适合持续部署）</h3>
+<pre>
+main ──●────●────●────●────●
+        \        /    \        /
+         ●──●──●      ●──●──●
+        feature1      feature2
+</pre>
+<ol>
+  <li><code>main</code> 分支始终保持可部署状态</li>
+  <li>从 <code>main</code> 创建功能分支：<code>git checkout -b feature-x</code></li>
+  <li>在功能分支上开发并提交</li>
+  <li>发起 Pull Request（PR）进行代码审查</li>
+  <li>通过后合并到 <code>main</code>，立即部署</li>
+</ol>
+
+<h3>10.2 Git Flow（较复杂，适合版本发布）</h3>
+<pre>
+develop ──●─────────●─────────●─────────●
+            \       / \       / \       /
+feature ──●──●──●    ●──●──●   ●──●──●
+                          \
+release ──────────────●───●
+                          \
+hotfix ───────────●─────────●
+                  \         /
+main ─────────────●───────────●─────────●
+</pre>
+<ul>
+  <li><strong>main</strong> — 生产就绪版本，只接受合并</li>
+  <li><strong>develop</strong> — 日常开发主分支</li>
+  <li><strong>feature/*</strong> — 功能开发分支，合并到 develop</li>
+  <li><strong>release/*</strong> — 发布准备分支，只修 bug</li>
+  <li><strong>hotfix/*</strong> — 紧急修复分支，从 main 创建，修复后合并到 main 和 develop</li>
+</ul>
+
+<h3>10.3 GitLab Flow</h3>
+<p>结合 GitHub Flow 和 Git Flow，增加了环境分支（如 <code>pre-production</code>、<code>production</code>），适合有多个环境的部署流程。</p>
+
+<hr class="section-divider">
+
+<!-- ==================== 第十一章 ==================== -->
+<h2 id="ch11">十一、常用高级技巧</h2>
+
+<h3>11.1 暂存工作（git stash）</h3>
+<pre>
+<span class="comment"># 暂存当前工作区修改（切换到其他分支前使用）</span>
+<span class="cmd">git stash</span>
+
+<span class="comment"># 暂存并包含未跟踪文件</span>
+<span class="cmd">git stash -u</span>                   <span class="comment"># 或 --include-untracked</span>
+
+<span class="comment"># 查看暂存列表</span>
+<span class="cmd">git stash list</span>
+
+<span class="comment"># 恢复最近一次暂存（并删除）</span>
+<span class="cmd">git stash pop</span>
+
+<span class="comment"># 恢复最近一次暂存（不删除）</span>
+<span class="cmd">git stash apply</span>
+
+<span class="comment"># 恢复指定的暂存</span>
+<span class="cmd">git stash apply stash@{2}</span>
+
+<span class="comment"># 删除指定暂存</span>
+<span class="cmd">git stash drop stash@{2}</span>
+
+<span class="comment"># 清除所有暂存</span>
+<span class="cmd">git stash clear</span>
+</pre>
+
+<h3>11.2 比较差异（git diff）</h3>
+<pre>
+<span class="cmd">git diff</span>                        <span class="comment"># 工作区 vs 暂存区</span>
+<span class="cmd">git diff --staged</span>              <span class="comment"># 暂存区 vs 最近提交</span>
+<span class="cmd">git diff HEAD</span>                  <span class="comment"># 工作区 vs 最近提交</span>
+<span class="cmd">git diff main feature</span>         <span class="comment"># 比较两个分支</span>
+<span class="cmd">git diff commit1 commit2</span>      <span class="comment"># 比较两个提交</span>
+<span class="cmd">git diff --stat</span>                <span class="comment"># 仅显示变更文件列表</span>
+<span class="cmd">git diff --name-only</span>           <span class="comment"># 仅显示文件名</span>
+</pre>
+
+<h3>11.3 二分查找（git bisect）</h3>
+<pre>
+<span class="comment"># 用二分法查找引入 bug 的提交</span>
+<span class="cmd">git bisect start</span>
+<span class="cmd">git bisect bad</span>                 <span class="comment"># 当前提交有问题</span>
+<span class="cmd">git bisect good</span> v1.0           <span class="comment"># v1.0 是好的</span>
+<span class="comment"># Git 会 checkout 一个中间提交，测试后标记 good/bad</span>
+<span class="cmd">git bisect good</span>
+<span class="cmd">git bisect bad</span>
+<span class="comment"># 重复直到找到第一个坏提交</span>
+<span class="cmd">git bisect reset</span>               <span class="comment"># 结束 bisect</span>
+</pre>
+
+<h3>11.4 子模块</h3>
+<pre>
+<span class="comment"># 添加子模块</span>
+<span class="cmd">git submodule add</span> https://github.com/user/lib.git lib
+
+<span class="comment"># 克隆包含子模块的项目</span>
+<span class="cmd">git clone --recursive</span> https://github.com/user/project.git
+
+<span class="comment"># 更新所有子模块</span>
+<span class="cmd">git submodule update --init --recursive</span>
+</pre>
+
+<h3>11.5 清理文件</h3>
+<pre>
+<span class="cmd">git clean -n</span>                    <span class="comment"># 预览将要删除的未跟踪文件</span>
+<span class="cmd">git clean -f</span>                    <span class="comment"># 删除未跟踪文件</span>
+<span class="cmd">git clean -fd</span>                   <span class="comment"># 删除未跟踪文件和目录</span>
+</pre>
+
+<h3>11.6 别名配置</h3>
+<pre>
+<span class="cmd">git config --global alias.co</span> checkout
+<span class="cmd">git config --global alias.br</span> branch
+<span class="cmd">git config --global alias.ci</span> commit
+<span class="cmd">git config --global alias.st</span> status
+<span class="cmd">git config --global alias.lg</span> "log --oneline --graph --all"
+
+<span class="comment"># 使用别名</span>
+<span class="cmd">git lg</span>       <span class="comment"># 等价于 git log --oneline --graph --all</span>
+<span class="cmd">git ci -m</span> "message"  <span class="comment"># 等价于 git commit -m</span>
+</pre>
+
+<h3>11.7 归档导出</h3>
+<pre>
+<span class="comment"># 导出指定版本的文件（不带 .git 目录）</span>
+<span class="cmd">git archive -o project-v1.0.zip HEAD</span>
+<span class="cmd">git archive -o project-v1.0.tar.gz v1.0</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第十二章 ==================== -->
+<h2 id="ch12">十二、常见问题与解决方案</h2>
+
+<h3>12.1 提交了敏感信息怎么办？</h3>
+<pre>
+<span class="comment"># 1. 从 Git 历史中彻底删除文件</span>
+<span class="cmd">git filter-branch --force --index-filter</span> \
+  "git rm --cached --ignore-unmatch config/secret.json" \
+  --prune-empty --tag-name-filter cat -- --all
+
+<span class="comment"># 2. 或者使用更方便的工具（需要安装）</span>
+<span class="cmd">git install git-filter-repo</span>
+<span class="cmd">git filter-repo --path config/secret.json --invert-paths</span>
+
+<span class="comment"># 3. 立即更换所有密码和密钥！</span>
+<span class="comment"># 4. 强制推送覆盖远程历史</span>
+<span class="cmd">git push --force --all origin</span>
+</pre>
+
+<h3>12.2 撤销 git add 但不想丢失修改</h3>
+<pre>
+<span class="cmd">git restore --staged</span> filename.txt
+<span class="comment"># 文件修改会保留在工作区</span>
+</pre>
+
+<h3>12.3 撤销最近一次提交但保留修改</h3>
+<pre>
+<span class="cmd">git reset --soft HEAD~1</span>
+<span class="comment"># 修改会留在暂存区，可以重新提交</span>
+</pre>
+
+<h3>12.4 想修改历史中的某个提交信息</h3>
+<pre>
+<span class="cmd">git rebase -i HEAD~5</span>    <span class="comment"># 交互式变基，将 pick 改成 reword</span>
+</pre>
+
+<h3>12.5 将多个提交合并成一个</h3>
+<pre>
+<span class="cmd">git rebase -i HEAD~5</span>    <span class="comment"># 将 pick 改成 squash 或 fixup</span>
+</pre>
+
+<h3>12.6 git pull 时遇到冲突</h3>
+<pre>
+<span class="comment"># 方式一：解决冲突后提交</span>
+<span class="comment"># 解决完后:</span>
+<span class="cmd">git add .</span>
+<span class="cmd">git commit</span>
+
+<span class="comment"># 方式二：放弃合并，回到之前状态</span>
+<span class="cmd">git merge --abort</span>
+</pre>
+
+<h3>12.7 不小心删除了未推送的分支</h3>
+<pre>
+<span class="cmd">git reflog</span>   <span class="comment"># 找到分支最后一次提交的 hash</span>
+<span class="cmd">git checkout -b</span> recovered-branch commit-hash
+</pre>
+
+<h3>12.8 远程仓库连接问题</h3>
+<pre>
+<span class="comment"># HTTPS 连接失败时切换为 SSH</span>
+<span class="cmd">git remote set-url origin git@github.com:user/repo.git</span>
+
+<span class="comment"># SSH 连接失败时切换为 HTTPS</span>
+<span class="cmd">git remote set-url origin https://github.com/user/repo.git</span>
+
+<span class="comment"># 配置代理（如果使用科学上网）</span>
+<span class="cmd">git config --global http.proxy</span> http://127.0.0.1:7890
+<span class="cmd">git config --global https.proxy</span> http://127.0.0.1:7890
+
+<span class="comment"># 取消代理</span>
+<span class="cmd">git config --global --unset http.proxy</span>
+<span class="cmd">git config --global --unset https.proxy</span>
+</pre>
+
+<hr class="section-divider">
+
+<!-- ==================== 第十三章 ==================== -->
+<h2 id="ch13">十三、命令速查表</h2>
+
+<h3>13.1 配置相关</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git config --global user.name "Name"</code></td><td>设置用户名</td></tr>
+  <tr><td><code>git config --global user.email "a@b.com"</code></td><td>设置邮箱</td></tr>
+  <tr><td><code>git config --list</code></td><td>查看所有配置</td></tr>
+  <tr><td><code>git config --global alias.lg "log --oneline"</code></td><td>设置别名</td></tr>
+</table>
+
+<h3>13.2 仓库操作</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git init</code></td><td>初始化仓库</td></tr>
+  <tr><td><code>git clone &lt;url&gt;</code></td><td>克隆远程仓库</td></tr>
+  <tr><td><code>git remote -v</code></td><td>查看远程仓库</td></tr>
+  <tr><td><code>git remote add origin &lt;url&gt;</code></td><td>添加远程仓库</td></tr>
+</table>
+
+<h3>13.3 基本操作</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git status</code></td><td>查看状态</td></tr>
+  <tr><td><code>git add .</code></td><td>暂存所有变更</td></tr>
+  <tr><td><code>git commit -m "msg"</code></td><td>提交</td></tr>
+  <tr><td><code>git commit -am "msg"</code></td><td>暂存+提交（仅已跟踪文件）</td></tr>
+  <tr><td><code>git push</code></td><td>推送到远程</td></tr>
+  <tr><td><code>git pull</code></td><td>拉取远程更新</td></tr>
+  <tr><td><code>git fetch</code></td><td>获取远程数据（不合并）</td></tr>
+  <tr><td><code>git log --oneline --graph --all</code></td><td>查看历史（推荐）</td></tr>
+  <tr><td><code>git reflog</code></td><td>查看所有操作记录</td></tr>
+</table>
+
+<h3>13.4 分支操作</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git branch</code></td><td>查看本地分支</td></tr>
+  <tr><td><code>git branch -a</code></td><td>查看所有分支</td></tr>
+  <tr><td><code>git checkout -b &lt;name&gt;</code></td><td>创建并切换分支</td></tr>
+  <tr><td><code>git switch -c &lt;name&gt;</code></td><td>创建并切换分支（新方式）</td></tr>
+  <tr><td><code>git merge &lt;branch&gt;</code></td><td>合并分支</td></tr>
+  <tr><td><code>git rebase &lt;branch&gt;</code></td><td>变基</td></tr>
+  <tr><td><code>git branch -d &lt;name&gt;</code></td><td>删除分支</td></tr>
+</table>
+
+<h3>13.5 撤销/恢复</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git restore &lt;file&gt;</code></td><td>撤销工作区修改</td></tr>
+  <tr><td><code>git restore --staged &lt;file&gt;</code></td><td>撤销暂存</td></tr>
+  <tr><td><code>git reset --soft HEAD~1</code></td><td>回退提交（保留修改）</td></tr>
+  <tr><td><code>git reset --hard HEAD~1</code></td><td>回退提交（丢弃修改）</td></tr>
+  <tr><td><code>git revert HEAD</code></td><td>创建反提交（安全）</td></tr>
+  <tr><td><code>git stash</code></td><td>暂存修改</td></tr>
+  <tr><td><code>git stash pop</code></td><td>恢复暂存</td></tr>
+</table>
+
+<h3>13.6 标签</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git tag -a v1.0 -m "msg"</code></td><td>创建附注标签</td></tr>
+  <tr><td><code>git push origin --tags</code></td><td>推送所有标签</td></tr>
+  <tr><td><code>git tag -d v1.0</code></td><td>删除本地标签</td></tr>
+</table>
+
+<h3>13.7 Diff 检查</h3>
+<table>
+  <tr><th>命令</th><th>说明</th></tr>
+  <tr><td><code>git diff</code></td><td>工作区 vs 暂存区</td></tr>
+  <tr><td><code>git diff --staged</code></td><td>暂存区 vs 最近提交</td></tr>
+  <tr><td><code>git diff HEAD</code></td><td>工作区 vs 最近提交</td></tr>
+  <tr><td><code>git diff &lt;branch1&gt; &lt;branch2&gt;</code></td><td>比较两个分支</td></tr>
+</table>
+
+<hr class="section-divider">
+
+<!-- ==================== 附录 ==================== -->
+<h2>附录：Git 学习资源推荐</h2>
+<ul>
+  <li><strong>官方文档</strong>：<a href="https://git-scm.com/doc">https://git-scm.com/doc</a> — 权威参考</li>
+  <li><strong>Pro Git 书籍（免费）</strong>：<a href="https://git-scm.com/book/zh/v2">https://git-scm.com/book/zh/v2</a> — 全面深入</li>
+  <li><strong>Learn Git Branching（交互式）</strong>：<a href="https://learngitbranching.js.org/">https://learngitbranching.js.org/</a> — 可视化学习</li>
+  <li><strong>GitHub 官方文档</strong>：<a href="https://docs.github.com">https://docs.github.com</a></li>
+  <li><strong>Oh Shit, Git!?!</strong>：<a href="https://ohshitgit.com/">https://ohshitgit.com/</a> — 常见错误修复</li>
+</ul>
+
+<div class="footer">
+  <p>本手册由 GitHub Copilot 生成 · 涵盖 Git 核心知识 · 2026 年 5 月</p>
+</div>
+
+</body>
+</html>

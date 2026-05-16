@@ -41,6 +41,12 @@ const routes = [
         meta: { title: '文章详情' }
       },
       {
+        path: 'news/:id',
+        name: 'NewsDetail',
+        component: () => import('../views/home/NewsDetail.vue'),
+        meta: { title: '新闻详情' }
+      },
+      {
         path: 'teachers',
         name: 'Teachers',
         component: () => import('../views/home/TeachersPage.vue'),
@@ -69,6 +75,12 @@ const routes = [
         name: 'ThemeSettings',
         component: () => import('../views/home/ThemeSettings.vue'),
         meta: { title: '显示模式' }
+      },
+      {
+        path: 'settings/security',
+        name: 'SecuritySettings',
+        component: () => import('../views/home/SecuritySettings.vue'),
+        meta: { title: '账号安全' }
       },
       {
         path: 'settings/lang',

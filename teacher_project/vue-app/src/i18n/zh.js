@@ -163,7 +163,33 @@ export default {
   settings_pwd_mismatch: '两次输入的新密码不一致',
   settings_pwd_success: '密码修改成功，请重新登录',
   settings_pwd_error: '当前密码错误',
+
+  // 安全设置
+  security_title: '账号安全',
+  security_realname_auth: '实名认证',
+  security_verified: '已认证',
+  security_pending: '审核中',
+  security_unverified: '未认证',
+  security_realname: '真实姓名',
+  security_realname_placeholder: '请输入真实姓名',
+  security_idcard: '身份证号',
+  security_idcard_placeholder: '请输入18位身份证号码',
+  security_idcard_front: '身份证正面',
+  security_idcard_back: '身份证背面',
+  security_submit_auth: '提交认证',
+  security_change_password: '修改密码',
+  security_old_password: '旧密码',
+  security_old_password_placeholder: '请输入旧密码',
+  security_new_password: '新密码',
+  security_new_password_placeholder: '请输入新密码（至少 6 位）',
+  security_confirm_password: '确认新密码',
+  security_confirm_password_placeholder: '请再次输入新密码',
+  security_update_password: '更新密码',
   settings_username_taken: '该用户名已被使用',
+
+  // 新闻
+  news_title: '央视新闻',
+
   // 管理员
   admin_badge: '管理员',
 

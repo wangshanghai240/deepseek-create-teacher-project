@@ -21,6 +21,9 @@
       </div>
     </div>
 
+    <!-- 新闻卡片区域 -->
+    <NewsCard />
+
     <div class="info-card">
       <h3>{{ $t('home_notice_title') }}</h3>
       <p>{{ $t('home_notice_text') }}</p>
@@ -30,9 +33,11 @@
 
 <script>
 import { ref } from 'vue'
+import NewsCard from '../../components/NewsCard.vue'
 
 export default {
   name: 'HomePage',
+  components: { NewsCard },
   setup() {
     const userInfo = ref(JSON.parse(localStorage.getItem('user') || '{}'))
     return { userInfo }

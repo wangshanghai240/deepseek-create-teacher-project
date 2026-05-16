@@ -22,6 +22,11 @@
         <span class="tab-text">{{ $t('profile_language') }}</span>
         <span class="tab-arrow">›</span>
       </div>
+      <div class="tab-item" @click="$router.push('/home/settings/security')">
+        <span class="tab-icon">🔒</span>
+        <span class="tab-text">{{ $t('security_title') }}</span>
+        <span class="tab-arrow">›</span>
+      </div>
     </div>
   </div>
 </template>

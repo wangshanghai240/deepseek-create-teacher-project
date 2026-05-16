@@ -78,7 +78,9 @@
       <!-- 超链接 -->
       <button class="tool-btn" @click="insertLink" title="超链接">🔗</button>
       <!-- 图片 -->
-      <button class="tool-btn" @click="insertImage" title="插入图片">🖼️</button>
+      <button class="tool-btn" @click="insertImage" title="插入图片" :disabled="uploadingImage">
+        {{ uploadingImage ? '⏳' : '🖼️' }}
+      </button>
 
       <span class="toolbar-divider"></span>
 
@@ -117,6 +119,15 @@
         spellcheck="false"
       ></textarea>
     </div>
+
+    <!-- 隐藏的文件选择器（用于插入图片） -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept="image/*"
+      style="display: none"
+      @change="onFileSelected"
+    />
   </div>
 </template>
 
@@ -202,17 +213,57 @@ export default {
       showBgPicker.value = false
     }
 
+    const fileInput = ref(null)
+    const uploadingImage = ref(false)
+
     const insertLink = () => {
-      const url = prompt('请输入链接地址：', 'https://')
+      const url = window.prompt ? window.prompt('请输入链接地址：', 'https://') : null;
       if (url && url.trim()) {
         execCmd('createLink', url.trim())
       }
     }
 
     const insertImage = () => {
-      const url = prompt('请输入图片地址：', 'https://')
-      if (url && url.trim()) {
-        execCmd('insertImage', url.trim())
+      // 触发文件选择器，让用户从手机相册/文件中选择图片
+      fileInput.value?.click()
+    }
+
+    const onFileSelected = async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      // 检查文件大小（限制 5MB）
+      if (file.size > 5 * 1024 * 1024) {
+        alert('图片不能超过 5MB')
+        e.target.value = ''
+        return
+      }
+
+      uploadingImage.value = true
+
+      try {
+        // 使用 FormData 上传图片到服务器
+        const formData = new FormData()
+        formData.append('image', file)
+
+        const res = await axios.post('/api/upload/image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 30000
+        })
+
+        if (res.data.success) {
+          const imageUrl = res.data.data.url
+          execCmd('insertImage', imageUrl)
+        } else {
+          alert('图片上传失败：' + (res.data.message || '未知错误'))
+        }
+      } catch (err) {
+        console.error('图片上传失败:', err)
+        alert('图片上传失败，请检查网络连接')
+      } finally {
+        uploadingImage.value = false
+        // 重置 file input，允许重新选择同一文件
+        e.target.value = ''
       }
     }
 
@@ -312,9 +363,9 @@ export default {
     return {
       title, editorHtml, rawHtml, saving, isNew, showHTML,
       showColorPicker, showBgPicker, fontColor, bgColor, fontSize,
-      editor, toolbar, fontSizes, colors, bgColors,
+      editor, toolbar, fileInput, uploadingImage, fontSizes, colors, bgColors,
       execCmd, changeFontSize, setColor, setBgColor,
-      insertLink, insertImage, onEditorInput, onPaste,
+      insertLink, insertImage, onFileSelected, onEditorInput, onPaste,
       onRawHtmlInput, savePost, goBack
     }
   }

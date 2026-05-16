@@ -154,6 +154,31 @@ export default {
   settings_username_taken: 'Username already taken',
   admin_badge: 'Admin',
 
+  // Security
+  security_title: 'Account Security',
+  security_realname_auth: 'Real Name Verification',
+  security_verified: 'Verified',
+  security_pending: 'Pending',
+  security_unverified: 'Unverified',
+  security_realname: 'Real Name',
+  security_realname_placeholder: 'Enter your real name',
+  security_idcard: 'ID Card Number',
+  security_idcard_placeholder: 'Enter 18-digit ID number',
+  security_idcard_front: 'ID Card (Front)',
+  security_idcard_back: 'ID Card (Back)',
+  security_submit_auth: 'Submit Verification',
+  security_change_password: 'Change Password',
+  security_old_password: 'Old Password',
+  security_old_password_placeholder: 'Enter old password',
+  security_new_password: 'New Password',
+  security_new_password_placeholder: 'Enter new password (min 6)',
+  security_confirm_password: 'Confirm New Password',
+  security_confirm_password_placeholder: 'Re-enter new password',
+  security_update_password: 'Update Password',
+
+  // News
+  news_title: 'CCTV News',
+
   // Article Editor
   editor_title_new: 'Write Article',
   editor_title_edit: 'Edit Article',
