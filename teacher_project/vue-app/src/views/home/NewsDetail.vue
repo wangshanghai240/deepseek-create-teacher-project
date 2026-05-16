@@ -96,6 +96,10 @@ export default {
 
     const newsId = window.location.pathname.split('/').pop()
 
+    // 调试日志
+    console.log('NewsDetail 路径:', window.location.pathname)
+    console.log('NewsDetail newsId:', newsId)
+
     /**
      * 播放 m3u8 视频
      */
@@ -193,7 +197,7 @@ export default {
         }
       } catch (err) {
         console.error('加载视频失败:', err)
-        videoError.value = '视频加载失败，请重试'
+        videoError.value = '视频加载失败(' + (err.message || '未知错误') + ')'
         videoStatus.value = 'error'
       }
     }
@@ -232,7 +236,7 @@ export default {
         }
       } catch (err) {
         console.error('获取新闻详情失败:', err)
-        error.value = '获取新闻详情失败，请检查网络连接'
+        error.value = '获取新闻详情失败(' + (err.message || '未知错误') + ')'
       } finally {
         loading.value = false
       }
