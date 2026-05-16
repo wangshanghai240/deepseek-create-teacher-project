@@ -287,7 +287,7 @@ router.get('/news/:id/video', async (req, res) => {
       return res.status(400).json({ success: false, message: '该新闻没有视频源地址' });
     }
 
-    // 第一步：从视频页面提取 guid
+    // 第一步：从视频页面提取视频标识
     const pageRes = await axios.get(newsItem.source_url, {
       timeout: 15000,
       headers: {
@@ -297,16 +297,25 @@ router.get('/news/:id/video', async (req, res) => {
     });
     const html = pageRes.data;
 
-    // 提取 guid（视频唯一标识）
+    // 提取视频标识：优先从 tv.cctv.com 页面提取 guid
+    let videoId = '';
     const guidMatch = html.match(/guid\s*=\s*['"]\s*([^'"]+)['"]/);
-    if (!guidMatch) {
+    if (guidMatch) {
+      videoId = guidMatch[1].trim();
+    } else {
+      // 从 news.cctv.com 页面中的 htmlVideoCode 提取视频ID
+      const vcMatch = html.match(/htmlVideoCode--\]([a-f0-9]+),/);
+      if (vcMatch) {
+        videoId = vcMatch[1];
+      }
+    }
+
+    if (!videoId) {
       return res.status(400).json({ success: false, message: '无法获取视频标识' });
     }
-    const guid = guidMatch[1].trim();
 
     // 第二步：通过 CCTV vdn API 获取视频播放地址（包含 m3u8）
-    // 注意：guid 不是 pid，需要用 vdn.apps.cntv.cn 接口
-    const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${guid}`;
+    const apiUrl = `https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=${videoId}`;
     const apiRes = await axios.get(apiUrl, {
       timeout: 15000,
       headers: {
@@ -323,7 +332,6 @@ router.get('/news/:id/video', async (req, res) => {
     if (videoData.hls_url) {
       videoUrl = videoData.hls_url;
     } else if (videoData.video && videoData.video.url) {
-      // 兜底使用 video.url（mp4）
       videoUrl = videoData.video.url;
       videoType = 'mp4';
     }
@@ -337,7 +345,7 @@ router.get('/news/:id/video', async (req, res) => {
       data: {
         id: parseInt(id),
         title: newsItem.title,
-        guid,
+        videoId,
         videoUrl,
         videoType
       }
