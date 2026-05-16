@@ -177,7 +177,7 @@ router.get('/news/:id', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: '新闻不存在' });
+      return res.json({ success: false, message: '新闻不存在' });
     }
 
     const newsItem = rows[0];
@@ -208,7 +208,7 @@ router.get('/news/:id/full', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: '新闻不存在' });
+      return res.json({ success: false, message: '新闻不存在' });
     }
 
     const newsItem = rows[0];
@@ -389,13 +389,13 @@ router.get('/news/:id/video', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: '新闻不存在' });
+      return res.json({ success: false, message: '新闻不存在' });
     }
 
     const newsItem = rows[0];
 
     if (!newsItem.source_url) {
-      return res.status(400).json({ success: false, message: '该新闻没有视频源地址' });
+      return res.json({ success: false, message: '该新闻没有视频源地址' });
     }
 
     // 第一步：从视频页面提取视频标识
