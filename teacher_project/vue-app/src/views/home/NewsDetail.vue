@@ -87,7 +87,17 @@ export default {
 
     const renderContent = (text) => {
       if (!text) return ''
-      return text.replace(/\n/g, '<br>')
+      // 替换换行为段落结构，支持连续换行分段
+      return text
+        .split(/\n{2,}/)
+        .map(para => para.trim())
+        .filter(para => para.length > 0)
+        .map(para => {
+          // 段落内的单换行转为<br>
+          const lines = para.split(/\n/).map(line => line.trim()).filter(line => line.length > 0)
+          return '<p>' + lines.join('<br>') + '</p>'
+        })
+        .join('')
     }
 
     onMounted(fetchNewsDetail)
@@ -211,6 +221,12 @@ export default {
 .news-content {
   font-size: 15px;
   color: var(--text-primary);
+  line-height: 1.8;
+}
+
+.news-content :deep(p) {
+  margin-bottom: 16px;
+  text-indent: 2em;
   line-height: 1.8;
 }
 

@@ -113,7 +113,7 @@ router.get('/news/:id/full', async (req, res) => {
         const htmlRes = await axios.get(newsItem.source_url, { timeout: 15000 });
         const html = htmlRes.data;
 
-        // 尝试多种选择器提取正文
+        // 尝试多种选择器提取正文（按优先级排列）
         const patterns = [
           /<div class="content_body"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|pagefun|share)"/,
           /<div class="cnt_bd"[^>]*>([\s\S]*?)<\/div>\s*<!--\s*(?:责任编辑|编辑)/,
@@ -122,6 +122,10 @@ router.get('/news/:id/full', async (req, res) => {
           /<div class="content"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|foot)"/,
           /<!--(?:begin)?content-->([\s\S]*?)<!--endcontent-->/,
           /<div class="text"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:page|func|share)"/,
+          /<div class="detail"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:foot|more|share)"/,
+          /<section[^>]*class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/section>/,
+          /<div[^>]*class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/div>/,
+          /<div[^>]*class="[^"]*main-content[^"]*"[^>]*>([\s\S]*?)<\/div>/,
         ];
 
         for (const pattern of patterns) {

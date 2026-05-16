@@ -163,7 +163,7 @@ async function fetchNewsDetail(url) {
       imageUrl = imgMatch[1].startsWith('http') ? imgMatch[1] : 'https:' + imgMatch[1];
     }
 
-    return { reporter, content: content.substring(0, 500), imageUrl };
+    return { reporter, content: content.substring(0, 5000), imageUrl };
   } catch (err) {
     return { reporter: '', content: '', imageUrl: '' };
   }
