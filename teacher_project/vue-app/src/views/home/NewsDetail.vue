@@ -91,10 +91,13 @@ export default {
     const videoPlayer = ref(null)
     let hlsInstance = null
 
+    // 检测是否为移动端（移动端原生HLS播放器可绕过防盗链）
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
     const newsId = window.location.pathname.split('/').pop()
 
     /**
-     * 使用 hls.js 播放 m3u8 视频
+     * 播放 m3u8 视频
      */
     const playVideo = (url) => {
       const video = videoPlayer.value
@@ -110,8 +113,7 @@ export default {
         hlsInstance = null
       }
 
-      // 移动端 Edge/Chrome 以及 Safari 都原生支持 HLS
-      // canPlayType 返回 "probably" 或 "maybe" 都表示支持
+      // 移动端或支持原生HLS的浏览器使用原生播放
       const canNativeHls = video.canPlayType('application/vnd.apple.mpegurl') !== ''
       if (canNativeHls) {
         video.src = url
@@ -127,7 +129,7 @@ export default {
         return
       }
 
-      // 使用 hls.js（通过后端代理加载，代理已处理防盗链）
+      // 桌面端使用 hls.js + 后端代理
       try {
         if (!Hls.isSupported()) {
           videoError.value = '您的浏览器不支持播放此视频'
@@ -156,7 +158,6 @@ export default {
           }
         })
 
-        // 20秒超时检测
         setTimeout(() => {
           if (!parsed && videoStatus.value === 'loading') {
             videoError.value = '视频加载超时'
@@ -171,7 +172,7 @@ export default {
     }
 
     /**
-     * 加载并播放视频（通过后端代理）
+     * 加载并播放视频
      */
     const loadVideo = async () => {
       if (!news.value || !news.value.id) return
@@ -180,10 +181,12 @@ export default {
       try {
         const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
         if (res.data.success && res.data.data.videoUrl) {
-          // 通过后端代理加载 m3u8 和 ts，代理已处理防盗链和路径重写
-          const proxyUrl = '/api/video/proxy?url=' + encodeURIComponent(res.data.data.videoUrl)
+          const rawUrl = res.data.data.videoUrl
+          // 移动端：直接使用原始hls_url（原生播放器绕过防盗链）
+          // 桌面端：通过代理（hls.js需CORS支持）
+          const playUrl = isMobile ? rawUrl : '/api/video/proxy?url=' + encodeURIComponent(rawUrl)
           await nextTick()
-          setTimeout(() => playVideo(proxyUrl), 100)
+          setTimeout(() => playVideo(playUrl), 100)
         } else {
           videoError.value = res.data.message || '无法获取视频播放地址'
           videoStatus.value = 'error'
