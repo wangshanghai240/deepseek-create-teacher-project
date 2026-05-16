@@ -41,11 +41,11 @@
           <div class="video-loading-spinner"></div>
           <div class="video-loading-text">{{ $t('loading') }}</div>
         </div>
-        <!-- 视频播放器 -->
+        <!-- 视频播放器（始终渲染，通过CSS控制显示，确保ref可用） -->
         <video
-          v-show="videoStatus === 'ready'"
           ref="videoPlayer"
           class="video-player"
+          :class="{ 'video-hidden': videoStatus !== 'ready' }"
           controls
           playsinline
           webkit-playsinline
@@ -75,9 +75,9 @@
 </template>
 
 <script>
-/* global Hls */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
+import Hls from 'hls.js'
 
 export default {
   name: 'NewsDetail',
@@ -86,7 +86,6 @@ export default {
     const loading = ref(true)
     const error = ref('')
     const fontSize = ref(16)
-    const videoUrl = ref('')
     const videoStatus = ref('idle') // 'idle' | 'loading' | 'ready' | 'error'
     const videoError = ref('')
     const videoPlayer = ref(null)
@@ -95,27 +94,11 @@ export default {
     const newsId = window.location.pathname.split('/').pop()
 
     /**
-     * 动态加载 hls.js 脚本
+     * 使用 hls.js 播放 m3u8 视频
      */
-    const loadHlsJs = () => {
-      return new Promise((resolve) => {
-        if (typeof Hls !== 'undefined') {
-          resolve(true)
-          return
-        }
-        const script = document.createElement('script')
-        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js'
-        script.onload = () => resolve(true)
-        script.onerror = () => resolve(false)
-        document.head.appendChild(script)
-      })
-    }
-
-    /**
-     * 使用 hls.js 加载并播放 m3u8 视频
-     */
-    const playVideo = async (url) => {
-      if (!url || !videoPlayer.value) {
+    const playVideo = (url) => {
+      const video = videoPlayer.value
+      if (!url || !video) {
         videoStatus.value = 'error'
         videoError.value = '播放器未就绪'
         return
@@ -127,44 +110,88 @@ export default {
         hlsInstance = null
       }
 
-      const video = videoPlayer.value
-
-      // 检测浏览器是否原生支持 HLS（如 Safari）
+      // Safari 原生支持 HLS
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url
+        video.addEventListener('error', () => {
+          videoError.value = '视频加载失败'
+          videoStatus.value = 'error'
+        }, { once: true })
         video.play().then(() => {
           videoStatus.value = 'ready'
         }).catch(() => {
-          videoError.value = '视频播放失败'
-          videoStatus.value = 'error'
+          // 自动播放被阻止，但用户会手动点击播放
+          videoStatus.value = 'ready'
         })
         return
       }
 
-      // 确保 hls.js 已加载
-      const hlsLoaded = await loadHlsJs()
-      if (!hlsLoaded || typeof Hls === 'undefined' || !Hls.isSupported()) {
-        videoError.value = '您的浏览器不支持播放此视频，请点击「在央视网观看」'
-        videoStatus.value = 'error'
-        return
-      }
+      // 使用 hls.js
+      try {
+        if (!Hls.isSupported()) {
+          videoError.value = '您的浏览器不支持播放此视频'
+          videoStatus.value = 'error'
+          return
+        }
 
-      // 使用 hls.js 播放
-      hlsInstance = new Hls()
-      hlsInstance.loadSource(url)
-      hlsInstance.attachMedia(video)
-      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoStatus.value = 'ready'
-        video.play().catch(() => {})
-      })
-      hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          hlsInstance.destroy()
-          hlsInstance = null
-          videoError.value = '视频播放出错，请重试'
+        hlsInstance = new Hls()
+        hlsInstance.loadSource(url)
+        hlsInstance.attachMedia(video)
+
+        let parsed = false
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          parsed = true
+          videoStatus.value = 'ready'
+          video.play().catch(() => {})
+        })
+
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.error('HLS致命错误:', data.type, data.details)
+            hlsInstance.destroy()
+            hlsInstance = null
+            videoError.value = '视频加载失败(' + (data.details || '未知错误') + ')'
+            videoStatus.value = 'error'
+          }
+        })
+
+        // 10秒超时检测
+        setTimeout(() => {
+          if (!parsed && videoStatus.value === 'loading') {
+            videoError.value = '视频加载超时'
+            videoStatus.value = 'error'
+          }
+        }, 10000)
+      } catch (e) {
+        console.error('hls.js错误:', e)
+        videoError.value = '视频初始化失败'
+        videoStatus.value = 'error'
+      }
+    }
+
+    /**
+     * 加载并播放视频
+     */
+    const loadVideo = async () => {
+      if (!news.value || !news.value.id) return
+      videoStatus.value = 'loading'
+      videoError.value = ''
+      try {
+        const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
+        if (res.data.success && res.data.data.videoUrl) {
+          const proxyUrl = '/api/video/proxy?url=' + encodeURIComponent(res.data.data.videoUrl)
+          // 等待 DOM 更新，确保 videoPlayer ref 已绑定
+          await nextTick()
+          setTimeout(() => playVideo(proxyUrl), 100)
+        } else {
+          videoError.value = res.data.message || '无法获取视频播放地址'
           videoStatus.value = 'error'
         }
-      })
+      } catch (err) {
+        console.error('加载视频失败:', err)
+        videoError.value = '视频加载失败，请重试'
+        videoStatus.value = 'error'
+      }
     }
 
     const fetchNewsDetail = async () => {
@@ -174,7 +201,6 @@ export default {
         const res = await axios.get('/api/news/' + newsId + '/full', { timeout: 20000 })
         if (res.data.success) {
           news.value = res.data.data
-          // 视频新闻不自动加载，等待用户点击播放按钮
         } else {
           error.value = '获取新闻详情失败'
         }
@@ -183,37 +209,6 @@ export default {
         error.value = '获取新闻详情失败，请检查网络连接'
       } finally {
         loading.value = false
-      }
-    }
-
-    /**
-     * 加载视频：获取视频地址后调用 playVideo 播放
-     */
-    const loadVideo = async () => {
-      if (!news.value || !news.value.id) return
-      videoStatus.value = 'loading'
-      videoError.value = ''
-      try {
-        const res = await axios.get('/api/news/' + news.value.id + '/video', { timeout: 20000 })
-        if (res.data.success) {
-          const rawUrl = res.data.data.videoUrl
-          if (rawUrl) {
-            const proxyUrl = '/api/video/proxy?url=' + encodeURIComponent(rawUrl)
-            videoUrl.value = proxyUrl
-            // 等待 DOM 更新后播放
-            setTimeout(() => playVideo(proxyUrl), 300)
-          } else {
-            videoError.value = '无法获取视频播放地址'
-            videoStatus.value = 'error'
-          }
-        } else {
-          videoError.value = res.data.message || '获取视频失败'
-          videoStatus.value = 'error'
-        }
-      } catch (err) {
-        console.error('加载视频失败:', err)
-        videoError.value = '视频加载失败，请重试'
-        videoStatus.value = 'error'
       }
     }
 
@@ -248,7 +243,7 @@ export default {
 
     onMounted(fetchNewsDetail)
 
-    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, loadVideo, videoUrl, videoStatus, videoError, videoPlayer }
+    return { news, loading, error, fontSize, fetchNewsDetail, goBack, formatDate, renderContent, loadVideo, videoStatus, videoError, videoPlayer }
   }
 }
 </script>
@@ -411,6 +406,10 @@ export default {
   display: block;
   background: #000;
   max-height: 500px;
+}
+
+.video-player.video-hidden {
+  display: none;
 }
 
 /* 视频加载中 */
