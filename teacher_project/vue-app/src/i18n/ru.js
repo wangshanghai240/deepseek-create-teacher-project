@@ -94,6 +94,8 @@ export default {
   profile_display_mode: 'Тема',
   profile_language: 'Язык',
   profile_logout: 'Выйти',
+  profile_logout_confirm: 'Подтвердить выход?',
+  profile_logout_hint: 'Вам нужно будет войти снова',
 
   theme_light: 'Светлая',
   theme_dark: 'Тёмная',

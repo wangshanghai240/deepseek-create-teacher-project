@@ -94,6 +94,8 @@ export default {
   profile_display_mode: 'Pantalla',
   profile_language: 'Idioma',
   profile_logout: 'Cerrar sesión',
+  profile_logout_confirm: '¿Confirmar cerrar sesión?',
+  profile_logout_hint: 'Deberá iniciar sesión nuevamente',
 
   theme_light: 'Modo claro',
   theme_dark: 'Modo oscuro',

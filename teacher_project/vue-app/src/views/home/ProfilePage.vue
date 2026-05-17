@@ -27,7 +27,19 @@
       </div>
     </div>
 
-    <button class="logout-btn" @click="handleLogout">{{ $t('profile_logout') }}</button>
+    <button class="logout-btn" @click="showLogoutModal = true">{{ $t('profile_logout') }}</button>
+
+    <!-- 退出确认弹窗 -->
+    <div v-if="showLogoutModal" class="logout-modal-overlay" @click.self="showLogoutModal = false">
+      <div class="logout-modal">
+        <h3 class="logout-modal-title">{{ $t('profile_logout_confirm') }}</h3>
+        <p class="logout-modal-desc">{{ $t('profile_logout_hint') }}</p>
+        <div class="logout-modal-actions">
+          <button class="logout-modal-cancel" @click="showLogoutModal = false">{{ $t('cancel') }}</button>
+          <button class="logout-modal-confirm" @click="doLogout">{{ $t('confirm') }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -57,7 +69,9 @@ export default {
       return avatarEmoji.value || (userInfo.value.username || 'U').charAt(0).toUpperCase()
     })
 
-    const handleLogout = () => {
+    const showLogoutModal = ref(false)
+
+    const doLogout = () => {
       localStorage.removeItem('user')
       localStorage.removeItem('token')
       localStorage.removeItem('avatar')
@@ -71,7 +85,7 @@ export default {
 
     return {
       userInfo, avatarEmoji, avatarBg, displayAvatar,
-      handleLogout, goToSettings
+      showLogoutModal, doLogout, goToSettings
     }
   }
 }
@@ -278,6 +292,88 @@ export default {
   color: var(--color-primary);
   font-size: 18px;
   font-weight: bold;
+}
+
+/* 退出确认弹窗 */
+.logout-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+.logout-modal {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 28px 28px 24px;
+  width: 320px;
+  max-width: 85vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: scaleIn 0.25s ease;
+}
+
+.logout-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.logout-modal-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.logout-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.logout-modal-cancel,
+.logout-modal-confirm {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.logout-modal-cancel {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.logout-modal-cancel:hover {
+  background: var(--border-light);
+}
+
+.logout-modal-confirm {
+  background: #e74c3c;
+  color: white;
+}
+
+.logout-modal-confirm:hover {
+  background: #c0392b;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .logout-btn {

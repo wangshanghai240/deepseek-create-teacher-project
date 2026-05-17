@@ -107,6 +107,8 @@ export default {
   profile_display_mode: 'Display Mode',
   profile_language: 'Language',
   profile_logout: 'Logout',
+  profile_logout_confirm: 'Confirm logout?',
+  profile_logout_hint: 'You will need to log in again',
 
   theme_light: 'Light Mode',
   theme_light_desc: 'Always use light background',

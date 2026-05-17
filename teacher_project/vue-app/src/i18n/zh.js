@@ -116,6 +116,8 @@ export default {
   profile_display_mode: '显示模式',
   profile_language: '语言',
   profile_logout: '退出登录',
+  profile_logout_confirm: '确认退出登录？',
+  profile_logout_hint: '退出后需要重新登录账号',
 
   // 显示模式
   theme_light: '浅色模式',

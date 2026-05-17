@@ -94,6 +94,8 @@ export default {
   profile_display_mode: 'الوضع',
   profile_language: 'اللغة',
   profile_logout: 'تسجيل الخروج',
+  profile_logout_confirm: 'تأكيد تسجيل الخروج؟',
+  profile_logout_hint: 'ستحتاج إلى تسجيل الدخول مرة أخرى',
 
   theme_light: 'وضع فاتح',
   theme_dark: 'وضع داكن',

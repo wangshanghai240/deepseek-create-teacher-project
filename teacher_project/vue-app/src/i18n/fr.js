@@ -94,6 +94,8 @@ export default {
   profile_display_mode: 'Affichage',
   profile_language: 'Langue',
   profile_logout: 'Déconnexion',
+  profile_logout_confirm: 'Confirmer la déconnexion ?',
+  profile_logout_hint: 'Vous devrez vous reconnecter',
 
   theme_light: 'Mode clair',
   theme_dark: 'Mode sombre',
