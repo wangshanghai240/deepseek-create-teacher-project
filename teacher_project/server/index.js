@@ -1,13 +1,11 @@
-// Node.js 服务器主入口文件
+// Node.js 服务器主入口文件（已迁移至 InsForge）
 
-// 创建 Express 应用实例
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const bcryptjs = require('bcryptjs');
-const mysql = require('mysql2/promise'); // 直接使用 mysql2，不通过 createPool
+const fs = require('fs');
+const insforge = require('./config/insforge');
 
-// Express 4.18+ 内置了 JSON 和 URL-encoded body parser，无需额外安装 body-parser
 const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
 const uploadRoutes = require('./routes/upload');
@@ -15,21 +13,16 @@ const newsRoutes = require('./routes/news');
 const renminRoutes = require('./routes/renmin');
 const cctvRoutes = require('./routes/cctv');
 
-// 创建应用实例（必须在使用 express() 之前）
 const app = express();
-const PORT = process.env.PORT || 5000; // 后端端口改为 5000
+const PORT = process.env.PORT || 5000;
 
 // 中间件配置
-app.use(cors()); // 启用 CORS，允许跨域请求
-app.use(express.json()); // 解析 JSON 请求体
-app.use(express.urlencoded({ extended: true })); // 解析 URL-encoded 请求体
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ========== 生产环境：托管前端静态文件 ==========
-const isProduction = process.env.NODE_ENV === 'production'
-const frontendDist = path.join(__dirname, '..', 'vue-app', 'dist')
-
-// 静态文件服务 - 允许访问上传的图片
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const isProduction = process.env.NODE_ENV === 'production';
+const frontendDist = path.join(__dirname, '..', 'vue-app', 'dist');
 
 // API 路由挂载
 app.use('/api', authRoutes);
@@ -104,33 +97,27 @@ app.use((err, req, res, next) => {
 // 启动服务器
 const startServer = async () => {
   try {
-    // 测试数据库连接
-    const pool = mysql.createPool({
-      host: 'mysql.sqlpub.com',
-      port: 3306,
-      user: 'wangshanghai',
-      password: 'TZw5UYxoPEhwNAM3',
-      database: 'wang_tom'
-    });
+    // 测试 InsForge 数据库连接
+    const { data, error } = await insforge.select('teacher_list', { limit: 1 });
 
-    await pool.getConnection().then(connection => {
-      console.log('✓ MySQL 数据库连接成功');
-      connection.release();
-    });
+    if (error) {
+      console.error('✗ InsForge 数据库连接失败:', JSON.stringify(error));
+    } else {
+      console.log('✓ InsForge 数据库连接成功');
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('========================================');
-      console.log(`✓ 服务器已启动`);
+      console.log(`✓ 服务器已启动（已迁移至 InsForge）`);
       console.log(`📍 地址：http://localhost:${PORT}`);
       console.log(`🔐 登录接口：POST http://localhost:${PORT}/api/login`);
       console.log(`📝 注册接口：POST http://localhost:${PORT}/api/register`);
       if (isProduction) {
         console.log(`🌐 前端页面：http://localhost:${PORT}`);
-        console.log(`💡 如需外网访问，请在服务器防火墙开放端口 ${PORT}`);
       }
       console.log('========================================');
 
-      // 启动新闻定时同步（每 30 分钟从 CCTV 获取最新新闻，最多保留 30 条）
+      // 启动新闻定时同步
       const { startNewsSync } = require('./sync_news');
       startNewsSync(true);
     });
@@ -140,14 +127,7 @@ const startServer = async () => {
   }
 };
 
-// 处理未捕获的异常
-process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Promise 拒绝:', reason);
-});
+startServer();
 
 startServer();
 

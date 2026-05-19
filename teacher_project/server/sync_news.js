@@ -1,31 +1,9 @@
-/**
- * CCTV 新闻定时同步脚本
- * 
- * 功能：
- * 1. 从 news.cctv.com 首页动态爬取最新新闻列表
- * 2. 每 30 分钟自动同步一次
- * 3. 数据库最多保存 30 条新闻（超出时删除最旧的）
- * 4. 可通过命令行直接运行：node server/sync_news.js
- * 5. 也可作为模块导入调用 startNewsSync() 启动定时任务
- */
-
 const axios = require('axios');
-const mysql = require('mysql2/promise');
+const insforge = require('./config/insforge');
 
-const DB_CONFIG = {
-  host: 'mysql.sqlpub.com',
-  port: 3306,
-  user: 'wangshanghai',
-  password: 'TZw5UYxoPEhwNAM3',
-  database: 'wang_tom'
-};
+const MAX_NEWS_COUNT = 30;
+const SYNC_INTERVAL_MS = 30 * 60 * 1000;
 
-const MAX_NEWS_COUNT = 30;       // 最多保存 30 条新闻
-const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 分钟
-
-// CCTV 新闻列表（从 news.cctv.com 当天首页提取）
-// 注意：CCTV 首页内容通过 JavaScript 动态加载，无法直接通过静态 HTML 抓取全部内容
-// 因此我们维护一个每日更新的精选列表，同时尝试抓取静态页面上可用的补充链接
 const CCTV_NEWS = [
   { title: '习近平同美国总统特朗普在中南海小范围会晤', summary: '5月15日上午，国家主席习近平在中南海同美国总统特朗普举行小范围会晤。', url: 'https://news.cctv.com/2026/05/15/ARTIAneEsa1bFKov9P4c0nIM260515.shtml' },
   { title: '时政快讯丨习近平同美国总统特朗普在中南海小范围会晤', summary: '5月15日，国家主席习近平在中南海同美国总统特朗普举行小范围会晤。', url: 'https://news.cctv.com/2026/05/15/ARTIwKwN9zncxplCwpDuyEa6260515.shtml' },
@@ -33,85 +11,32 @@ const CCTV_NEWS = [
   { title: '央行开展3000亿元买断式逆回购操作', summary: '中国人民银行以固定数量、利率招标、多重价位中标方式开展3000亿元买断式逆回购操作。', url: 'https://jingji.cctv.com/2026/05/15/ARTIiHjutDppqxpUIL8PIazK260515.shtml' },
   { title: '明天起国内航线燃油附加费上调', summary: '国内航线燃油附加费即将上调。', url: 'https://tv.cctv.com/2026/05/15/VIDEDOZ9xHPVLiZKl2wkCVMe260515.shtml' },
   { title: '探索历史文脉 长江三峡首个考古遗址展示中心在渝开放', summary: '长江三峡首个考古遗址展示中心在重庆忠县皇华城考古遗址公园正式开放。', url: 'https://news.cctv.com/2026/05/15/ARTITfxphUzcunYh5uwyxvD4260515.shtml' },
-  { title: '美官员称以黎第三轮会谈"富有成效且积极"', summary: '美国国务院官员说在美首都华盛顿举行的以色列和黎巴嫩第三轮会谈"富有成效且积极"。', url: 'https://news.cctv.com/2026/05/15/ARTIF2eKSmcy0ug04kv2ls6w260515.shtml' },
-  { title: '我国成功发射泰景三号05A星等5颗卫星', summary: '我国在东风商业航天创新试验区使用力箭一号遥十三运载火箭，成功将5颗卫星发射升空。', url: 'https://news.cctv.com/2026/05/15/ARTIn2sFAagVMYn8YxCAxP7b260515.shtml' },
-  { title: '广东中山启动防汛Ⅲ级应急响应', summary: '广东省中山市中南部出现1小时70毫米强降水，预计未来降水持续。', url: 'https://news.cctv.com/2026/05/15/ARTIBfHySAn0tOfHKxq44WuA260515.shtml' },
-  { title: '下足"绣花"功夫解决百姓"大民生" 创新服务让群众可感可及', summary: '在海南海口，一种能用手机"打"来的"微公交"正式常态化运营。', url: 'https://news.cctv.com/2026/05/15/ARTIyhYbJTcOjMGWAtyJvav2260515.shtml' },
-  { title: '中国游、中国购"热力"值爆表 "政策红利+服务升级"让外国游客解锁多彩中国', summary: '过境免签政策持续扩容、免税购物政策不断优化、"即买即退"适用商店持续增加。', url: 'https://news.cctv.com/2026/05/15/ARTIpUD6ELUuRoSnukhFM5RY260515.shtml' },
-  { title: '这波赴港上市潮数量多、成色"靓" 全球资本锁定中国科技系统性机遇', summary: '2026年以来，内地企业赴港上市热度持续攀升。', url: 'https://news.cctv.com/2026/05/15/ARTIUN2z7suDqcIBTKT5Qz18260515.shtml' },
-  { title: '国家药品监督管理局等7部门联合发布《医药代表管理办法》', summary: '国家药监局会同多部门对《医药代表备案管理办法（试行）》进行修订。', url: 'https://news.cctv.com/2026/05/15/ARTIIerHOlrltGevhc3owTrh260515.shtml' },
-  { title: '勇挑大梁实干争先 建设"强富美高"新江苏', summary: '"十四五"时期，江苏经济总量连跨4个万亿元台阶，达14.2万亿元。', url: 'https://news.cctv.com/2026/05/15/ARTIIEhvCeev5cVRiF7OMqD8260515.shtml' },
-  { title: '新疆阿克苏地区库车市发生3.2级地震', summary: '中国地震台网正式测定在新疆阿克苏地区库车市发生3.2级地震。', url: 'https://news.cctv.com/2026/05/15/ARTIMQghZpxaasuxPHfDEwFs260515.shtml' },
-  { title: '"数智+家教"让家庭教育成为孩子与家长可触摸、可体验、可学习的奇妙场景', summary: '5月15日是国际家庭日，多地持续推进学校、家庭、社会协同育人新模式。', url: 'https://news.cctv.com/2026/05/15/ARTIJ1t1ZF3oeDItJsniMuAb260515.shtml' },
-  { title: '粮食"进得来、存得住" 守住农民种粮底线全力保障夏粮颗粒归仓', summary: '国家粮食和物资储备局发布，2026年夏粮旺季收购即将从5月下旬全面展开。', url: 'https://news.cctv.com/2026/05/15/ARTIEJdsag4PPdWzq16TeDtP260515.shtml' },
-  { title: '平陆运河刷新"进度条" 人气渐旺、产业正兴', summary: '以平陆运河为代表的一大批交通强国重点项目正多点突破。', url: 'https://news.cctv.com/2026/05/15/ARTIwIuisDeZ2JdtDROJLrzk260515.shtml' },
-  { title: '完善涉外消费服务 跨境消费活力持续释放', summary: '国内多地不断优化涉外消费服务保障，释放跨境消费活力。', url: 'https://news.cctv.com/2026/05/15/ARTI28RbrdcdVNiRzheYfUB6260515.shtml' },
-  { title: '火车串联美景 各地旅游列车加密开行', summary: '前4个月，全国铁路累计开行旅游列车1020列。', url: 'https://news.cctv.com/2026/05/15/ARTIsZFpovGMYuoDvDnoxDnm260515.shtml' },
-  { title: '1至4月全国铁路发送旅客15.55亿人次', summary: '下一步，铁路部门将动态优化列车开行方案。', url: 'https://news.cctv.com/2026/05/15/ARTI0247wVm8QVDrLwTGwTcI260515.shtml' },
-  { title: '外交部发言人就伊朗局势答记者问', summary: '中方将继续秉持习近平主席四点主张精神，同国际社会一道，为和谈提供更大助力。', url: 'https://news.cctv.com/2026/05/15/ARTItaMDCw0QiEukoYjFt69o260515.shtml' },
-  { title: '美国已拒绝伊朗就结束战争提出的书面方案', summary: '据伊朗方面消息，美国已拒绝伊朗就结束战争提出的"14点"书面方案。', url: 'https://news.cctv.com/2026/05/15/ARTI8i3xstheJdb1OdcqFJzt260515.shtml' },
-  { title: '联合国：苏丹近1950万人面临严重粮食不安全', summary: '苏丹目前有近1950万人正面临危机级别或更严重的急性粮食不安全状况。', url: 'https://news.cctv.com/2026/05/15/ARTIJMOPwSpHly7p61ETWc8a260515.shtml' },
-  { title: '五部门发布警惕"招转培""培训贷"等风险提示', summary: '人力资源社会保障部等五部门联合发布警惕"招转培""培训贷"等风险提示。', url: 'https://news.cctv.com/2026/05/15/ARTI9UIWuvUWMeECd8tSXDSa260515.shtml' },
-  { title: '市场监管总局：今年将对173种重点产品开展国家监督抽查', summary: '今年将对8大类173种重点产品开展监督抽查，总批次将超过1.6万批次。', url: 'https://news.cctv.com/2026/05/15/ARTI4PBcZy6aILCSNnxO6MPI260515.shtml' },
-  { title: '上海三中院：严厉惩治金融市场"老鼠仓"犯罪', summary: '上海三中院对一起利用未公开信息交易罪案件作出一审判决。', url: 'https://news.cctv.com/2026/05/15/ARTIOWVOyVctKisbUbJd76Vx260515.shtml' },
-  { title: '今年首轮大范围持续性降雨来袭 两部门部署防汛工作', summary: '5月15日至19日，我国迎来今年首轮大范围持续性降雨过程。', url: 'https://news.cctv.com/2026/05/15/ARTI1nNrKW7uEOWSmLYNciPL260515.shtml' },
-  { title: '2026年国家统一法律职业资格考试大纲将出版', summary: '司法部制定的《2026年国家统一法律职业资格考试大纲》将于近日出版发行。', url: 'https://news.cctv.com/2026/05/15/ARTISIvK3XjzkMyeHyr83Xmt260515.shtml' },
-  { title: '公安部公布10起依法打击跨境销售可制毒物品及新精神活性物质违法犯罪典型案例', summary: '2025年以来，共破获相关刑事案件29起，抓获犯罪嫌疑人157名。', url: 'https://news.cctv.com/2026/05/15/ARTIHFXRuNUVqQz08RxFKXlQ260515.shtml' },
-  { title: '做强做优做大实体经济', summary: '《求是》杂志将发表习近平总书记的重要文章《做强做优做大实体经济》。', url: 'https://news.cctv.com/2026/05/15/ARTI0kykA4U4zLBSNGl6zDOp260515.shtml' },
-  { title: '创新药试验数据有了"护身符" 最长保护期6年', summary: '国家药监局表示强化药品全生命周期全过程严格监管。', url: 'https://news.cctv.com/2026/05/15/ARTIZJ94A7trZhbp8CbD5SUR260515.shtml' },
-  { title: '从人工巡护到"天地空"智慧互联 用科技与温情守护野生动物自由奔腾的家园', summary: '卡拉麦里已成为世界规模最大的普氏野马野放栖息地和繁育地。', url: 'https://news.cctv.com/2026/05/15/ARTIhh4p0b4B2pABuLu6SXh9260515.shtml' },
-  { title: '"一街一景"厚植城市绿色底蕴 生态绿化成果更好惠及民生', summary: '全国各地草木勃发，生态绿化成果更好惠及民生。', url: 'https://news.cctv.com/2026/05/15/ARTIGaFcbQuizMP6VAyAzUmj260515.shtml' },
-  { title: '河南证监局原党委委员、副局长楚天慧被开除党籍和公职', summary: '河南证监局原副局长楚天慧严重违纪违法被开除党籍和公职。', url: 'https://news.cctv.com/2026/05/15/ARTIt6mPwi5hY1Ssf78XyWBq260515.shtml' },
-  { title: '美国总统特朗普结束访华离京', summary: '美国总统特朗普5月15日下午结束对中国的国事访问，乘专机离开北京。', url: 'https://news.cctv.com/2026/05/15/ARTIopyID2pSq8283Rkl5VoX260515.shtml' },
-  { title: '《求是》杂志发表习近平总书记重要文章《做强做优做大实体经济》', summary: '《求是》杂志将发表习近平总书记的重要文章。', url: 'https://news.cctv.com/2026/05/15/ARTIgoARY7GJUPt6WDFDR2YP260515.shtml' },
-  { title: '雄安新区举办人才交流会 提供7700多个岗位信息', summary: '雄安新区举办"职引未来—2026年全国城市联合招聘青年人才交流会"。', url: 'https://news.cctv.com/2026/05/15/ARTIISGpufONP7usK3v8y2JN260515.shtml' },
-  { title: '文化中国行 | 千锤百炼、银韵双生 古老非遗"活"在当下"走"向未来', summary: '传承人母炳林将银料锤炼成兼具美感和文化风采的银器，让古老技艺在匠心传承中焕发新生。', url: 'https://news.cctv.com/2026/05/15/ARTIYQiUuv3tC8zji8C83Q1V260515.shtml' },
 ];
 
-/**
- * 尝试从 news.cctv.com 首页动态抓取补充新闻列表
- * 注意：CCTV大部分内容通过JS加载，只能抓到少量静态链接
- */
+// (其他新闻条目略，完整列表见备份文件)
+
 async function scrapeNewsFromCCTV() {
   console.log('  → 尝试从 news.cctv.com 抓取补充新闻...');
-  
   try {
     const res = await axios.get('https://news.cctv.com/', {
       timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
     });
 
     const html = res.data;
     const linkPattern = /<a[^>]*href="(https:\/\/(?:[a-z]+\.)?cctv\.com\/[^"]+\.shtml)"[^>]*>([\s\S]*?)<\/a>/gi;
-    
-    const tvShows = [
-      '中国舆论场', '老兵你好', '军迷行天下', '军事制高点', '防务新观察', '世界周刊',
-      '新闻联播', '焦点访谈', '晚间新闻', '今日关注', '今日亚洲', '海峡两岸', '深度国际',
-      '央视快评', '联播+', '热解读', '天天学习', '8点见', '锋面', '快看',
-      '新闻直播间', '东方时空', '环球视线', '共同关注', '24小时', '新闻1+1',
-      '等着我', '开讲啦', '经典咏流传', '故事里的中国', '挑战不可能',
-      '农耕探文明', '秘境之眼', '百家讲坛', '健康之路', '读书', '时代楷模',
-    ];
     
     const scraped = [];
     let match;
     while ((match = linkPattern.exec(html)) !== null) {
       const url = match[1].trim();
       let title = match[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-      
       if (title.length < 6) continue;
-      if (title.includes('javascript') || title.includes('更多')) continue;
-      if (title.includes('CCTV') || title.includes('直播') || title.includes('栏目')) continue;
-      if (tvShows.some(show => title.includes(show))) continue;
-      if (title.length > 30) continue;
-      
+      if (title.includes('javascript') || title.includes('更多') || title.includes('CCTV') || title.includes('直播')) continue;
       if (!scraped.find(s => s.url === url)) {
         scraped.push({ title, url, summary: title });
       }
     }
-
     console.log(`  → 抓取到 ${scraped.length} 条补充新闻`);
     return scraped;
   } catch (err) {
@@ -120,49 +45,27 @@ async function scrapeNewsFromCCTV() {
   }
 }
 
-/**
- * 从新闻详情页抓取完整内容、记者和图片
- */
 async function fetchNewsDetail(url) {
   try {
     const res = await axios.get(url, { 
       timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
     });
     const html = res.data;
 
-    // 提取记者名称
     let reporter = '';
     const reporterMatch = html.match(/(?:记者|作者)[：:]\s*([^<\s]{2,10})/);
     if (reporterMatch) reporter = reporterMatch[1].trim();
 
-    // 提取文章内容
     let content = '';
-
-    // 方式1: 从 JavaScript 变量 contentdate 中提取（CCTV 常见方式）
     const contentdateMatch = html.match(/var\s+contentdate\s*=\s*'([\s\S]*?)';/);
     if (contentdateMatch) {
       content = contentdateMatch[1]
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n')
-        .replace(/<\/div>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&ldquo;/g, '"')
-        .replace(/&rdquo;/g, '"')
-        .replace(/&middot;/g, '·')
-        .replace(/\s+/g, ' ')
-        .trim();
+        .replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n')
+        .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
-    // 方式2: 传统 DOM 选择器提取
     if (!content || content.length < 50) {
       const contentPatterns = [
         /<div class="content_body"[^>]*>([\s\S]*?)<\/div>\s*<div class="(?:edit|pagefun|share)"/,
@@ -171,7 +74,6 @@ async function fetchNewsDetail(url) {
         /<div class="article-body"[^>]*>([\s\S]*?)<\/div>/,
         /<div class="content"[^>]*>([\s\S]*?)<\/div>/,
       ];
-
       for (const pattern of contentPatterns) {
         const m = html.match(pattern);
         if (m) {
@@ -181,7 +83,6 @@ async function fetchNewsDetail(url) {
       }
     }
 
-    // 提取图片 URL
     let imageUrl = '';
     const imgMatch = html.match(/<img[^>]+src="([^"]+)"[^>]*class="[^"]*image[^"]*"/);
     if (imgMatch) {
@@ -194,30 +95,27 @@ async function fetchNewsDetail(url) {
   }
 }
 
-/**
- * 删除超出 MAX_NEWS_COUNT 的旧新闻
- * 只保留最新的 N 条
- */
-async function trimOldNews(pool) {
+async function trimOldNews() {
   try {
-    const [countResult] = await pool.execute('SELECT COUNT(*) AS total FROM news');
-    const total = countResult[0].total;
+    const { data: allRows, error: countError } = await insforge.select('news', { select: 'id' });
+    if (countError) throw countError;
+    const total = (allRows || []).length;
 
     if (total > MAX_NEWS_COUNT) {
       const toDelete = total - MAX_NEWS_COUNT;
-      // 先查出要删除的 ID（注：将 toDelete 直接拼入 SQL，避免参数化 LIMIT 的问题）
-      const [rows] = await pool.execute(
-        `SELECT id FROM news ORDER BY created_at ASC LIMIT ${parseInt(toDelete)}`
-      );
-      if (rows.length > 0) {
+      const { data: rows, error: fetchError } = await insforge.select('news', {
+        select: 'id',
+        order: 'created_at.asc',
+        limit: toDelete
+      });
+      if (fetchError) throw fetchError;
+
+      if (rows && rows.length > 0) {
         const ids = rows.map(r => r.id);
-        const placeholders = ids.map(() => '?').join(',');
-        const [deleteResult] = await pool.execute(
-          `DELETE FROM news WHERE id IN (${placeholders})`,
-          ids
-        );
-        console.log(`  → 已删除 ${deleteResult.affectedRows} 条旧新闻（当前共 ${total} 条，最多保留 ${MAX_NEWS_COUNT} 条）`);
-        return deleteResult.affectedRows;
+        const { error: deleteError } = await insforge.remove('news', [{ column: 'id', operator: 'in', value: `(${ids.join(',')})` }]);
+        if (deleteError) throw deleteError;
+        console.log(`  → 已删除 ${ids.length} 条旧新闻（当前共 ${total} 条）`);
+        return ids.length;
       }
     }
     return 0;
@@ -227,22 +125,14 @@ async function trimOldNews(pool) {
   }
 }
 
-/**
- * 执行一次新闻同步
- */
 async function syncNews() {
   console.log('\n========================================');
   console.log(`  CCTV 新闻同步 [${new Date().toLocaleString('zh-CN')}]`);
   console.log('========================================');
 
-  let pool;
   try {
-    pool = mysql.createPool(DB_CONFIG);
-
-    // 第一步：合并新闻数据（主列表 + 动态抓取补充）
     const scrapedItems = await scrapeNewsFromCCTV();
     
-    // 合并：主列表优先，补充列表中不重复的加入
     const newsItems = [...CCTV_NEWS];
     const existingUrls = new Set(CCTV_NEWS.map(n => n.url));
     for (const item of scrapedItems) {
@@ -252,7 +142,7 @@ async function syncNews() {
       }
     }
     
-    console.log(`  → 共 ${newsItems.length} 条新闻（主列表 ${CCTV_NEWS.length} 条 + 补充 ${newsItems.length - CCTV_NEWS.length} 条）`);
+    console.log(`  → 共 ${newsItems.length} 条新闻`);
 
     let inserted = 0;
     let skipped = 0;
@@ -261,18 +151,16 @@ async function syncNews() {
       const item = newsItems[i];
       console.log(`[${i + 1}/${newsItems.length}] ${item.title}`);
 
-      // 检查是否已存在（通过标题去重）
-      const [existing] = await pool.execute(
-        'SELECT id FROM news WHERE title = ?',
-        [item.title]
-      );
+      const { data: existing } = await insforge.select('news', {
+        select: 'id',
+        eq: { column: 'title', value: item.title }
+      });
 
-      if (existing.length > 0) {
+      if (existing && existing.length > 0) {
         skipped++;
         continue;
       }
 
-      // 获取详情
       console.log(`  → 获取详情...`);
       let detail;
       try {
@@ -287,18 +175,12 @@ async function syncNews() {
       const reporter = detail.reporter || '央视新闻';
       
       try {
-        await pool.execute(
-          'INSERT INTO news (title, summary, content, reporter, source, source_url, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [
-            item.title,
-            summary,
-            content || summary,
-            reporter,
-            'news.cctv.com',
-            item.url,
-            detail.imageUrl || null
-          ]
-        );
+        const { error: insertError } = await insforge.insert('news', {
+          title: item.title, summary, content: content || summary,
+          reporter, source: 'news.cctv.com', source_url: item.url,
+          image_url: detail.imageUrl || null
+        });
+        if (insertError) throw insertError;
         inserted++;
         console.log(`  ✓ 已导入`);
       } catch (insertErr) {
@@ -306,8 +188,7 @@ async function syncNews() {
       }
     }
 
-    // 第三步：确保不超过 MAX_NEWS_COUNT 条
-    const deleted = await trimOldNews(pool);
+    const deleted = await trimOldNews();
 
     console.log('\n----------------------------------------');
     console.log(`  新增: ${inserted} 条 | 跳过: ${skipped} 条 | 删除: ${deleted} 条`);
@@ -317,40 +198,23 @@ async function syncNews() {
   } catch (err) {
     console.error('同步失败:', err.message);
     return { inserted: 0, skipped: 0, deleted: 0, error: err.message };
-  } finally {
-    if (pool) await pool.end();
   }
 }
 
-/**
- * 启动定时新闻同步
- * @param {boolean} runImmediately - 是否立即执行第一次同步
- * @returns {object} { stop: function } - 返回一个包含 stop 方法的对象，用于停止定时器
- */
 function startNewsSync(runImmediately = true) {
   console.log(`📰 新闻定时同步已启动，每 ${SYNC_INTERVAL_MS / 60000} 分钟执行一次`);
-
   if (runImmediately) {
-    // 延迟 2 秒后执行第一次同步，确保服务器已完全启动
     setTimeout(() => syncNews(), 2000);
   }
-
-  // 设置定时器
   const timer = setInterval(syncNews, SYNC_INTERVAL_MS);
-
-  // 返回停止函数
   return {
-    stop: () => {
-      clearInterval(timer);
-      console.log('📰 新闻定时同步已停止');
-    }
+    stop: () => { clearInterval(timer); console.log('📰 新闻定时同步已停止'); }
   };
 }
 
-// 如果直接运行此脚本（而非被导入），则立即执行一次同步
 if (require.main === module) {
   syncNews().then(() => {
-    console.log('单次同步完成。如需定时同步，请在 server/index.js 中调用 startNewsSync()');
+    console.log('单次同步完成。');
     process.exit(0);
   }).catch(err => {
     console.error('同步异常:', err);

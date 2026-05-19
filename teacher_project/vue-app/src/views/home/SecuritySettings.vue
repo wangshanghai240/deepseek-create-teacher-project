@@ -83,7 +83,38 @@
         {{ changingPwd ? $t('loading') : $t('security_update_password') }}
       </button>
     </div>
+
+    <!-- 注销账号 -->
+    <div class="section-card delete-account-section">
+      <div class="section-title">
+        <span class="section-icon">🗑️</span>
+        <span>{{ $t('security_delete_account') }}</span>
+      </div>
+      <p class="delete-hint">{{ $t('security_delete_account_hint') }}</p>
+      <button class="delete-btn" @click="showDeleteModal = true">
+        {{ $t('security_delete_account') }}
+      </button>
+    </div>
   </div>
+
+  <!-- 确认注销模态框 -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
+        <div class="modal-card">
+          <div class="modal-icon">⚠️</div>
+          <h3 class="modal-title">{{ $t('security_delete_account_confirm') }}</h3>
+          <p class="modal-desc">{{ $t('security_delete_account_hint') }}</p>
+          <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" @click="showDeleteModal = false">{{ $t('cancel') }}</button>
+            <button class="modal-btn modal-btn-confirm" @click="handleDeleteAccount" :disabled="deleting">
+              {{ deleting ? $t('loading') : $t('security_delete_account_btn') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script>
@@ -97,6 +128,8 @@ export default {
     const toastMessage = ref('')
     const submitting = ref(false)
     const changingPwd = ref(false)
+    const deleting = ref(false)
+    const showDeleteModal = ref(false)
     const authStatus = ref('unverified') // unverified | pending | verified
     const idFrontInput = ref(null)
     const idBackInput = ref(null)
@@ -238,6 +271,31 @@ export default {
       }
     }
 
+    const handleDeleteAccount = async () => {
+      deleting.value = true
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        const res = await axios.delete('/api/user/' + user.id, { timeout: 10000 })
+        if (res.data.success) {
+          showDeleteModal.value = false
+          // 清除本地存储
+          localStorage.removeItem('user')
+          localStorage.removeItem('token')
+          localStorage.removeItem('isAdmin')
+          localStorage.removeItem('authStatus')
+          // 跳转到登录页
+          window.location.href = '/'
+        } else {
+          alert(res.data.message || '注销失败')
+        }
+      } catch (err) {
+        console.error('注销账号失败:', err)
+        alert('注销失败，请检查网络连接')
+      } finally {
+        deleting.value = false
+      }
+    }
+
     // 加载已有认证信息
     onMounted(async () => {
       const savedStatus = localStorage.getItem('authStatus')
@@ -262,9 +320,9 @@ export default {
     })
 
     return {
-      showToast, toastMessage, submitting, changingPwd, authStatus,
+      showToast, toastMessage, submitting, changingPwd, deleting, showDeleteModal, authStatus,
       form, passwordForm, idFrontInput, idBackInput,
-      goBack, triggerUpload, onUploadIdCard, submitAuth, changePassword
+      goBack, triggerUpload, onUploadIdCard, submitAuth, changePassword, handleDeleteAccount
     }
   }
 }
@@ -351,4 +409,78 @@ export default {
 .toast-leave-active { animation: toastOut 0.3s ease; }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes toastOut { from { opacity: 1; transform: translateX(-50%) translateY(0); } to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+
+/* 注销账号 */
+.delete-account-section {
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+.delete-account-section .section-title {
+  color: #dc3545;
+}
+.delete-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.delete-btn {
+  width: 100%; padding: 14px; border: 2px solid #dc3545; border-radius: 12px;
+  background: transparent; color: #dc3545;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.delete-btn:hover {
+  background: #dc3545; color: white;
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-card {
+  background: var(--bg-card); border-radius: 20px;
+  padding: 32px 28px; max-width: 340px; width: 85%;
+  text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-icon { font-size: 48px; margin-bottom: 12px; }
+.modal-title {
+  font-size: 20px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.modal-desc {
+  font-size: 14px; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: 24px;
+}
+.modal-actions {
+  display: flex; gap: 12px;
+}
+.modal-btn {
+  flex: 1; padding: 12px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; border: none;
+}
+.modal-btn-cancel {
+  background: var(--bg-secondary); color: var(--text-primary);
+}
+.modal-btn-cancel:hover {
+  background: var(--border-light);
+}
+.modal-btn-confirm {
+  background: #dc3545; color: white;
+}
+.modal-btn-confirm:hover {
+  opacity: 0.9;
+}
+.modal-btn-confirm:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+
+/* 模态框动画 */
+.modal-enter-active { animation: modalIn 0.25s ease; }
+.modal-leave-active { animation: modalOut 0.25s ease; }
+@keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes modalOut { from { transform: scale(1); opacity: 1; } to { transform: scale(0.9); opacity: 0; } }
 </style>

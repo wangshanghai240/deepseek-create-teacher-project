@@ -180,6 +180,12 @@ export default {
   security_confirm_password_placeholder: 'Re-enter new password',
   security_update_password: 'Update Password',
 
+  // Delete Account
+  security_delete_account: 'Delete Account',
+  security_delete_account_confirm: 'Confirm account deletion?',
+  security_delete_account_hint: 'The account will be permanently deleted. This action cannot be undone.',
+  security_delete_account_btn: 'Confirm Delete',
+
   // News
   news_title: 'CCTV News',
 

@@ -1,36 +1,18 @@
 const express = require('express')
 const multer = require('multer')
-const path = require('path')
-const fs = require('fs')
+const axios = require('axios')
+const { BASE_URL, ANON_KEY } = require('../config/insforge')
 const router = express.Router()
 
 // ========== 图片上传配置 ==========
 
-// 上传目录
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'images')
-
-// 确保上传目录存在
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-}
-
-// 配置 multer 存储
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR)
-  },
-  filename: (req, file, cb) => {
-    // 生成唯一文件名：时间戳 + 随机数 + 原始扩展名
-    const ext = path.extname(file.originalname).toLowerCase()
-    const name = Date.now() + '-' + Math.random().toString(36).substring(2, 8) + ext
-    cb(null, name)
-  }
-})
+// 使用内存存储，直接上传到 InsForge Storage
+const storage = multer.memoryStorage()
 
 // 文件类型过滤
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
-  const ext = path.extname(file.originalname).toLowerCase()
+  const ext = '.' + file.originalname.split('.').pop().toLowerCase()
   if (allowedTypes.includes(ext)) {
     cb(null, true)
   } else {
@@ -46,28 +28,44 @@ const upload = multer({
   }
 })
 
-// POST /api/upload/image - 上传图片
-router.post('/upload/image', upload.single('image'), (req, res) => {
+// POST /api/upload/image - 上传图片到 InsForge Storage
+router.post('/upload/image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.json({ success: false, message: '请选择要上传的图片' })
     }
 
-    // 构造可访问的 URL
-    const imageUrl = '/uploads/images/' + req.file.filename
+    // 上传到 InsForge Storage
+    const fileName = Date.now() + '-' + Math.random().toString(36).substring(2, 8) + '.' + req.file.originalname.split('.').pop()
+
+    // Use Buffer directly via axios
+    const response = await axios.put(
+      `${BASE_URL}/api/storage/buckets/images/objects/${fileName}`,
+      req.file.buffer,
+      {
+        headers: {
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'Content-Type': req.file.mimetype
+        },
+        timeout: 30000,
+        maxBodyLength: 10 * 1024 * 1024
+      }
+    )
+
+    const imageUrl = `${BASE_URL}/api/storage/buckets/images/objects/${fileName}`
 
     res.json({
       success: true,
       data: {
         url: imageUrl,
-        filename: req.file.filename,
+        filename: fileName,
         size: req.file.size,
         mimetype: req.file.mimetype
       },
       message: '图片上传成功'
     })
   } catch (err) {
-    console.error('图片上传失败:', err)
+    console.error('图片上传失败:', err.response?.data || err.message)
     res.status(500).json({ success: false, message: '图片上传失败：' + err.message })
   }
 })

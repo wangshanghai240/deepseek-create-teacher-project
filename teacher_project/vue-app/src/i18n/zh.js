@@ -191,6 +191,12 @@ export default {
   security_update_password: '更新密码',
   settings_username_taken: '该用户名已被使用',
 
+  // 注销账号
+  security_delete_account: '注销账号',
+  security_delete_account_confirm: '确认注销账号？',
+  security_delete_account_hint: '注销后账号将被永久删除，所有数据不可恢复',
+  security_delete_account_btn: '确认注销',
+
   // 新闻
   news_title: '央视新闻',
 
